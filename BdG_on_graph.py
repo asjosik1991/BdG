@@ -11,13 +11,14 @@ import networkx as nx
 "systems"
 
 class Lattice():
-    def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None):
+    def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None, pbc=False):
         if mode=="triangle":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,-1)]
         if mode=="square":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1)]
-        self.size=size
+        self.size=size #linear size
         self.mode=mode
+        self.pbc=pbc #periodic boundary conditions
         self.sites=[]
         self.hopping=hopping
         self.fractal_iter=fractal_iter
@@ -62,7 +63,6 @@ class Lattice():
 
 
     def Sierpinski_carpet(self):
-
         power=0
         counter=self.size
         while counter>1:
@@ -97,7 +97,23 @@ class Lattice():
         for site in del_array:
             self.sites.remove(site)
 
-        return
+        N = len(self.sites)
+        H=np.zeros((N,N))
+        test_site_set=set(self.sites)
+        for n_site in range(N):
+            #print("n_site, n_coord", n_site, self.sites[n_site])
+            for neigh_vec in self.neigh:
+                if self.pbc:
+                    neigh_coord = tuple((a + b)%(self.size) for a, b in zip(self.sites[n_site], neigh_vec))
+                else:
+                    neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
+                #print("neigh_coord", neigh_coord)
+                if neigh_coord in test_site_set:
+                    n_neigh = self.sites.index(neigh_coord)
+                    #print("n_neigh, neigh_coord", n_neigh, neigh_coord)
+                    H[n_site,n_neigh]=self.hopping
+
+        self.hamiltonian = H
 
     def Sierpinski_gasket(self):
 
@@ -157,7 +173,11 @@ class Lattice():
             y=self.sites[n_site][1]
             #print("site", x,y)
             for neigh_vec in self.neigh:
-                neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
+                if self.pbc:
+                    neigh_coord = tuple((a + b)%(self.size) for a, b in zip(self.sites[n_site], neigh_vec))
+                else:
+                    neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
+
                 #print("neigh_coord", neigh_coord)
 
                 if x%l_min==0 and y%l_min!=0 and (neigh_vec==(1,0) or neigh_vec==(1,1)):
@@ -178,13 +198,16 @@ class Lattice():
         self.hamiltonian = H
 
 
-    def prepare_sample(self):
+    def create_hamiltonian(self):
+
         self.create_list_of_sites()
-        if self.fractal_iter>0:
-            if self.mode=="triangle":
-                self.Sierpinski_gasket()
-            if self.mode=="square":
-                self.Sierpinski_carpet()
+        
+        if self.mode=="triangle":
+           self.Sierpinski_gasket()
+           
+        if self.mode=="square":
+           self.Sierpinski_carpet()
+           
         if self.alpha>0:
             self.add_disorder()
 
@@ -195,31 +218,10 @@ class Lattice():
                 print("holes disorder", self.sites[n], "n", n)
                 self.sites.remove(self.sites[n])
 
-    def create_hamiltonian(self):
-
-        self.prepare_sample()
-        if self.mode=="triangle" and self.fractal_iter>0:
-            return
-        N = len(self.sites)
-        H=np.zeros((N,N))
-        #print(self.sites)
-        test_site_set=set(self.sites)
-        for n_site in range(N):
-            #print("n_site, n_coord", n_site, self.sites[n_site])
-            for neigh_vec in self.neigh:
-                neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
-                #print("neigh_coord", neigh_coord)
-                if neigh_coord in test_site_set:
-                    n_neigh = self.sites.index(neigh_coord)
-                    #print("n_neigh, neigh_coord", n_neigh, neigh_coord)
-                    H[n_site,n_neigh]=self.hopping
-
         if len(self.dis_array)>0:
             for n in self.dis_array:
                 print("V_disorder site", self.sites[n], "n", n)
-                H[n,n]=100
-
-        self.hamiltonian=H
+                self.hamiltonian[n,n]=100
 
 #Fermi function
 def F(E,mu,T):
@@ -525,11 +527,11 @@ def main():
 
     mode="square"
     t=1
-    size=20
+    size=27
     T=1/20
     V=0
     mu=10**(-2)
-    sample = Lattice(t, mode, size, fractal_iter=0)
+    sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
     sample.create_hamiltonian()
     Delta, H = BdG_cycle(sample, V, T)
     n=charge_density(sample, H, mu, T)

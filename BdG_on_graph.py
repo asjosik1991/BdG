@@ -8,8 +8,7 @@ import glob
 import os
 import networkx as nx
 
-"systems"
-
+"Class for initial one-particle lattice and corresponding hamiltonian"
 class Lattice():
     def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None, pbc=False):
         if mode=="triangle":
@@ -36,6 +35,7 @@ class Lattice():
         else:
             self.del_array=del_array
         #print("Hamiltonian parameteres: mode", self.mode, "dis_array", self.dis_array, "del_array", self.del_array)
+        self.create_hamiltonian()
 
     def create_list_of_sites(self):
         n_site=0
@@ -69,10 +69,13 @@ class Lattice():
             size_check=counter%3
             counter=counter//3
             if size_check>0:
-                print("size is incompatible with Sierpinski cerpet")
-                return
+                break                
             power+=1
-
+        
+        if power<self.fractal_iter:
+            print("the size is incompatible with fractal iterations")
+            return
+            
         #print("power", power)
         del_array = []
         for x in range(self.size):
@@ -223,124 +226,143 @@ class Lattice():
                 print("V_disorder site", self.sites[n], "n", n)
                 self.hamiltonian[n,n]=100
 
-#Fermi function
-def F(E,mu,T):
-    return 1/(np.exp((E-mu)/T)-1)
-
-def local_kinetic_energy(sample, H_2p, hopping, mu,T):
-    N=len(sample.sites)
-    spectra, vectors = eigh(H_2p)
-    site_set=set(sample.sites)
-    K=np.zeros(N)
-
-    for i in range(N): #cycle over indices
-        for n in range(N):
-            coord=sample.sites[i]
-            coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
-            if coord_x in site_set:
-                i_x= sample.sites.index(coord_x)
-                K[i]=hopping*((np.conj(vectors[i_x,n])*vectors[i,n]+np.conj(vectors[i,n])*vectors[i_x,n])*F(spectra[N+n],mu,T)+
-                        (np.conj(vectors[i_x,N+n])*vectors[i,N+n]+np.conj(vectors[i,N+n])*vectors[i_x,N+n])*(1-F(spectra[N+n],mu,T)))
-    #K=K/N
-    return K
 
 
-def twopoint_correlator(sample, H_2p, hopping, mu,T, q_y):
+"Class for BdG hamiltonians and all corresponding functions"
+class BdG():
+    def __init__(self, lattice_sample, V, T, mu, Delta=[]):
+        self.lattice_sample=lattice_sample
+        self.size=lattice_sample.size
+        self.pbc=lattice_sample.pbc
+        self.lattice_H=lattice_sample.hamiltonian
+        self.N=len(lattice_sample.sites)
+        self.hopping=lattice_sample.hopping
+        self.V=V
+        self.T=T
+        self.mu=mu
+        self.BdG_H=[]
+        
+        if len(Delta)==0:
+            self.Delta=np.zeros(self.N)
+        else:
+            self.Delta=Delta
+        
+        self.construct_hamiltonian()
+        spectra, vectors = eigh(self.BdG_H)
+        self.spectra=spectra
+        self.vectors=vectors
 
-    N=len(sample.sites)
-    Lambda_part=np.zeros((N,N,N,N), dtype=complex)
-    spectra, vectors = eigh(H_2p)
-    u=vectors[:N,:]
-    v=vectors[N:,:]
-    u_c=np.conj(u)
-    v_c=np.conj(v)
-    site_set=set(sample.sites)
-    a=np.zeros((N,N,N,N))
-    b=np.zeros((N,N,N,N))
-    c=np.zeros((N,N,N,N))
-    d=np.zeros((N,N,N,N))
-    for i in range(N):
-        for j in range(N):
-            for n in range(N):
-                for m in range(N):
-                    coord_i=sample.sites[i]
-                    coord_ix= tuple(a + b for a, b in zip(coord_i, (1,0)))
-                    coord_j=sample.sites[i]
-                    coord_jx= tuple(a + b for a, b in zip(coord_j, (1,0)))
-                    if (coord_ix in site_set) and (coord_jx in site_set):
-                        i_x= sample.sites.index(coord_ix)
-                        j_x= sample.sites.index(coord_jx)
 
-                        a[i,j,n,m]=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
-                                   +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
-                                   + u[j_x,n]*u_c[i,n]*u[i_x,m]*u_c[j,m] - u_c[i,n]*v[j,n]*u[i_x,m]*v_c[j_x,m]
+    #Fermi function
+    def F(E):
+        return 1/(np.exp((E-self.mu)/self.T)-1)
 
-                        b[i,j,n,m]=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
-                                   -u_c[i_x,n]*v[j,n]*v_c[i,m]*u[j_x,m] - u[j,n]*u_c[i,n]*v_c[i_x,m]*v[j_x,m]- u_c[i,n]*v[j_x,n]*v_c[i_x,m]*u[j,m]\
-                                   + u[j_x,n]*u_c[i,n]*v_c[i_x,m]*v[j,m] + u_c[i,n]*v[j,n]*v_c[i_x,m]*u[j_x,m]
-
-                        c[i, j, n, m] =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
-                                   -v[i_x,n]*u_c[j,n]*u[i,m]*v_c[j_x,m] - v_c[j,n]*v[i,n]*u[i_x,m]*u_c[j_x,m]- v[i,n]*u_c[j_x,n]*u[i_x,m]*v_c[j,m]\
-                                   + v_c[j_x,n]*v[i,n]*u[i_x,m]*u_c[j,m] + v[i,n]*u_c[j,n]*u[i_x,m]*v_c[j_x,m]
-
-                        d[i, j, n, m] = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
-                                   +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
-                                   + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
-
-                        Lambda_part[i,j,n,m]=hopping**2/N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a[i,j,n,m]+d[i,j,n,m])*(F(spectra[N+n],mu,T)-F(spectra[N+m],mu,T))/(spectra[N+n]-spectra[N+m])
-                                                                    +(b[i,j,n,m]+c[i,j,n,m])*(F(spectra[N+n],mu,T)+F(spectra[N+m],mu,T))/(spectra[N+n]+spectra[N+m]))
-    Lambda=np.sum(Lambda_part, axis=(1,2,3))
-    return Lambda
+    def local_kinetic_energy(sample, H_2p, hopping, mu,T):
+        
+        site_set=set(self.lattice_sample.sites)
+        K=np.zeros(self.N)
     
-def local_stiffness(sample, H_2p,hopping, mu,T, q_y):
+        for i in range(self.N): #cycle over indices
+            for n in range(self.N):
+                coord=sample.sites[i]
+                if self.pbc:
+                    coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
+                else:
+                    coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
+                if coord_x in site_set:
+                    i_x= sample.sites.index(coord_x)
+                    K[i]=hopping*((np.conj(self.vectors[i_x,n])*self.vectors[i,n]+np.conj(self.vectors[i,n])*self.vectors[i_x,n])*self.F(self.spectra[self.N+n])+
+                            (np.conj(self.vectors[i_x,self.N+n])*self.vectors[i,N+n]+np.conj(self.vectors[i,self.N+n])*self.vectors[i_x,N+n])*(1-self.F(self.spectra[self.N+n])))
+        #K=K/N
+        return K
+
+
+    def twopoint_correlator(q_y):
     
-    K=local_kinetic_energy(sample, H_2p, hopping, mu, T)
-    Lambda=twopoint_correlator(sample, H_2p,hopping, mu,T, q_y)
-    return K-Lambda
+        Lambda_part=np.zeros((self.N,self.N,self.N,self.N), dtype=complex)
+        u=self.vectors[:self.N,:]
+        v=self.vectors[self.N:,:]
+        u_c=np.conj(u)
+        v_c=np.conj(v)
+        site_set=set(sample.sites)
+        a=np.zeros((self.N,self.N,self.N,self.N))
+        b=np.zeros((self.N,self.N,self.N,self.N))
+        c=np.zeros((self.N,self.N,self.N,self.N))
+        d=np.zeros((self.N,self.N,self.N,self.N))
+        for i in range(self.N):
+            for j in range(self.N):
+                for n in range(self.N):
+                    for m in range(self.N):
+                        coord_i=sample.sites[i]
+                        coord_ix= tuple(a + b for a, b in zip(coord_i, (1,0)))
+                        coord_j=sample.sites[i]
+                        coord_jx= tuple(a + b for a, b in zip(coord_j, (1,0)))
+                        if (coord_ix in site_set) and (coord_jx in site_set):
+                            i_x= sample.sites.index(coord_ix)
+                            j_x= sample.sites.index(coord_jx)
+    
+                            a[i,j,n,m]=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
+                                       +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
+                                       + u[j_x,n]*u_c[i,n]*u[i_x,m]*u_c[j,m] - u_c[i,n]*v[j,n]*u[i_x,m]*v_c[j_x,m]
+    
+                            b[i,j,n,m]=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
+                                       -u_c[i_x,n]*v[j,n]*v_c[i,m]*u[j_x,m] - u[j,n]*u_c[i,n]*v_c[i_x,m]*v[j_x,m]- u_c[i,n]*v[j_x,n]*v_c[i_x,m]*u[j,m]\
+                                       + u[j_x,n]*u_c[i,n]*v_c[i_x,m]*v[j,m] + u_c[i,n]*v[j,n]*v_c[i_x,m]*u[j_x,m]
+    
+                            c[i, j, n, m] =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
+                                       -v[i_x,n]*u_c[j,n]*u[i,m]*v_c[j_x,m] - v_c[j,n]*v[i,n]*u[i_x,m]*u_c[j_x,m]- v[i,n]*u_c[j_x,n]*u[i_x,m]*v_c[j,m]\
+                                       + v_c[j_x,n]*v[i,n]*u[i_x,m]*u_c[j,m] + v[i,n]*u_c[j,n]*u[i_x,m]*v_c[j_x,m]
+    
+                            d[i, j, n, m] = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
+                                       +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
+                                       + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
+    
+                            Lambda_part[i,j,n,m]=hopping**2/N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a[i,j,n,m]+d[i,j,n,m])*(F(self.spectra[N+n])-F(self.spectra[N+m]))/(self.spectra[N+n]-self.spectra[N+m])
+                                                                        +(b[i,j,n,m]+c[i,j,n,m])*(self.F(spectra[N+n])+self.F(self.spectra[self.N+m]))/(self.spectra[N+n]+self.spectra[N+m]))
+        Lambda=np.sum(Lambda_part, axis=(1,2,3))
+        return Lambda
+        
+    def local_stiffness(q_y):
+        
+        K=local_kinetic_energy()
+        Lambda=twopoint_correlator(q_y)
+        return K-Lambda
 
 
-def construct_hamiltonian(N, H, Delta):
-    H_Delta = diags([Delta], [0], shape=(N, N)).toarray()
-    H_bdg = np.block([[H, H_Delta], [H_Delta, -H]])
-    return H_bdg
-
-
-def charge_density(sample, H_2p,mu,T):
-    N=len(sample.sites)
-    spectra, vectors = eigh(H_2p)
-    energies=F(spectra[N:],mu,T)
-    #print(energies)
-    v=vectors[N:,N:]
-    u=vectors[:N,N:]
-    n=2*np.einsum(u,[0,1],np.conj(u), [0,1],energies,[1],[0])+2*np.einsum(v,[0,1],np.conj(v), [0,1],np.ones(N)-energies,[1],[0])
-
-    return n
-
-
-def BdG_cycle(sample, V,T,Delta_ini=0, initial=True):
-
-    H_1p=sample.hamiltonian
-    N=len(sample.sites)
-    print("N",N)
-    if initial==False:
-        Delta=0.1*np.ones(N)+0.1*np.random.rand(N)
-    else:
-        Delta = Delta_ini
-    step=0
-
-    while True:
-        H=construct_hamiltonian(N,H_1p, Delta)
-        spectra, vectors = eigh(H)
-        vectors_up=0.5 * V * vectors[N:,:]
-        Delta_next= np.einsum(vectors_up, [0,1], vectors[:N,:], [0,1], np.tanh(spectra/ T),[1],[0])
-        error=np.max(np.abs((Delta-Delta_next)))
-        Delta=Delta_next
-        print("step", step, "error", error, "Delta_max", np.max(np.abs(Delta)))
-        step += 1
-        if error<10**(-6):
-            break
-
-    return Delta, H
+    def construct_hamiltonian():
+        H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
+        self.BdG_H = np.block([[lattice_H, H_Delta], [H_Delta, -lattice_H]])
+    
+    
+    def charge_density():
+        energies=self.F(spectra[self.N:])
+        #print(energies)
+        v=self.vectors[self.N:,self.N:]
+        u=self.vectors[:self.N,self.N:]
+        n=2*np.einsum(u,[0,1],np.conj(u), [0,1],energies,[1],[0])+2*np.einsum(v,[0,1],np.conj(v), [0,1],np.ones(self.N)-energies,[1],[0])
+    
+        return n
+    
+    
+    def BdG_cycle():
+    
+        step=0    
+        while True:
+            vectors_up=0.5 * self.V * self.vectors[self.N:,:]
+            Delta_next= np.einsum(vectors_up, [0,1], vectors[:self.N,:], [0,1], np.tanh(self.spectra/ self.T),[1],[0])
+            error=np.max(np.abs((Delta-Delta_next)))
+            self.Delta=Delta_next
+            print("step", step, "error", error, "Delta_max", np.max(np.abs(Delta)))
+            step += 1
+            if error<10**(-6):
+                break
+            construct_hamiltonian()
+            spectra, vectors = eigh(H)
+            self.spectra=spectra
+            self.vectors=vectors
+    
+        self.Delta=Delta
+        self.BdG_H=H
 
 
 #function to calculate different variants#
@@ -527,16 +549,17 @@ def main():
 
     mode="square"
     t=1
-    size=27
+    size=41
     T=1/20
     V=0
     mu=10**(-2)
-    sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    sample.create_hamiltonian()
-    Delta, H = BdG_cycle(sample, V, T)
-    n=charge_density(sample, H, mu, T)
+    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    BdG_sample=BdG(lattice_sample, V, T, mu)
+    BdG_sample.BdG_cycle()
+    
+    n=BdG_sample.charge_density()
     print("charge density", np.sum(n)/len(sample.sites))
-    K=local_kinetic_energy(sample,H,t,mu,T)
+    K=BdG_sample.local_kinetic_energy()
     print("kinetic energy", np.sum(K)/len(sample.sites))
 
 

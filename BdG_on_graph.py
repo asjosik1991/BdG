@@ -38,7 +38,7 @@ class Lattice():
         self.create_hamiltonian()
 
     def create_list_of_sites(self):
-        n_site=0
+
         if self.mode == "triangle":
             for i in range(self.size):
                 for j in range(i+1):
@@ -244,9 +244,12 @@ class BdG():
         
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
+            self.initial_Delta=False #it is necessary to obtain non-trivial solution of BdG equation
         else:
             self.Delta=Delta
+            self.initial_Delta=True
         
+        #construct trivial hamiltonian
         self.construct_hamiltonian()
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
@@ -255,7 +258,7 @@ class BdG():
 
     #Fermi function
     def F(self, E):
-        return 1/(np.exp((E-self.mu)/self.T)-1)
+        return 1/(np.exp((E-self.mu)/self.T)+1)
 
     def local_kinetic_energy(self):
         
@@ -284,7 +287,7 @@ class BdG():
         v=self.vectors[self.N:,:]
         u_c=np.conj(u)
         v_c=np.conj(v)
-        site_set=set(sample.sites)
+        site_set=set(self.lattice_sample.sites)
         a=np.zeros((self.N,self.N,self.N,self.N))
         b=np.zeros((self.N,self.N,self.N,self.N))
         c=np.zeros((self.N,self.N,self.N,self.N))
@@ -298,8 +301,8 @@ class BdG():
                         coord_j=self.lattice_sample.sites[i]
                         coord_jx= tuple(a + b for a, b in zip(coord_j, (1,0)))
                         if (coord_ix in site_set) and (coord_jx in site_set):
-                            i_x= sample.sites.index(coord_ix)
-                            j_x= sample.sites.index(coord_jx)
+                            i_x= self.lattice_sample.sites.index(coord_ix)
+                            j_x= self.lattice_sample.sites.index(coord_jx)
     
                             a[i,j,n,m]=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
                                        +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
@@ -317,15 +320,15 @@ class BdG():
                                        +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
                                        + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
     
-                            Lambda_part[i,j,n,m]=hopping**2/N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a[i,j,n,m]+d[i,j,n,m])*(F(self.spectra[N+n])-F(self.spectra[N+m]))/(self.spectra[N+n]-self.spectra[N+m])
-                                                                        +(b[i,j,n,m]+c[i,j,n,m])*(self.F(spectra[N+n])+self.F(self.spectra[self.N+m]))/(self.spectra[N+n]+self.spectra[N+m]))
+                            Lambda_part[i,j,n,m]=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a[i,j,n,m]+d[i,j,n,m])*(self.F(self.spectra[self.N+n])-self.F(self.spectra[self.N+m]))/(self.spectra[self.N+n]-self.spectra[self.N+m])
+                                                                        +(b[i,j,n,m]+c[i,j,n,m])*(self.F(self.spectra[self.N+n])+self.F(self.spectra[self.N+m]))/(self.spectra[self.N+n]+self.spectra[self.N+m]))
         Lambda=np.sum(Lambda_part, axis=(1,2,3))
         return Lambda
         
     def local_stiffness(self, q_y):
         
-        K=local_kinetic_energy()
-        Lambda=twopoint_correlator(q_y)
+        K=self.local_kinetic_energy()
+        Lambda=self.twopoint_correlator(q_y)
         return K-Lambda
 
 
@@ -346,17 +349,24 @@ class BdG():
     
     def BdG_cycle(self):
     
-        step=0    
+        step=0
+        if self.initial_Delta==False:
+            self.Delta=0.1*np.ones(self.N)+0.1*np.random.rand(self.N)
+            self.construct_hamiltonian()
+            spectra, vectors = eigh(self.BdG_H)
+            self.spectra=spectra
+            self.vectors=vectors
+            
         while True:
             vectors_up=0.5 * self.V * self.vectors[self.N:,:]
-            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,:], [0,1], np.tanh(self.spectra/ self.T),[1],[0])
+            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,:], [0,1], np.tanh(self.spectra/ (2*self.T)),[1],[0])
             error=np.max(np.abs((self.Delta-Delta_next)))
             self.Delta=Delta_next
             print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
             step += 1
             if error<10**(-6):
                 break
-            construct_hamiltonian()
+            self.construct_hamiltonian()
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
@@ -526,13 +536,14 @@ def main():
 
     mode="square"
     t=1
-    size=41
+    size=20
     T=1/20
-    V=0
-    mu=10**(-2)
+    V=1.6
+    mu=0.0
     lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
     BdG_sample.BdG_cycle()
+    #print(BdG_sample.spectra)
     
     n=BdG_sample.charge_density()
     print("charge density", np.sum(n)/len(lattice_sample.sites))

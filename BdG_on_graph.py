@@ -7,6 +7,8 @@ from numpy import random
 import glob
 import os
 import networkx as nx
+import pickle
+
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class Lattice():
@@ -225,6 +227,14 @@ class Lattice():
             for n in self.dis_array:
                 print("V_disorder site", self.sites[n], "n", n)
                 self.hamiltonian[n,n]=100
+    
+    
+    #figure of a lattice
+    def show_graph(self):
+        pos=self.sites
+        plt.scatter(pos[:,0], pos[:,1], s=4)
+        plt.savefig("graph.png")
+        plt.close()
 
 
 
@@ -348,7 +358,8 @@ class BdG():
     
     
     def BdG_cycle(self):
-    
+        
+        print("BdG cycle T=", self.T)
         step=0
         if self.initial_Delta==False:
             self.Delta=0.1*np.ones(self.N)+0.1*np.random.rand(self.N)
@@ -358,7 +369,7 @@ class BdG():
             self.vectors=vectors
             
         while True:
-            vectors_up=0.5 * self.V * self.vectors[self.N:,:]
+            vectors_up=self.V * np.conj(self.vectors[self.N:,:])
             Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,:], [0,1], np.tanh(self.spectra/ (2*self.T)),[1],[0])
             error=np.max(np.abs((self.Delta-Delta_next)))
             self.Delta=Delta_next
@@ -370,185 +381,73 @@ class BdG():
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
+    
+
+#create \Delta-T diagram for a given sample
+def T_diagram(lattice_sample, V, mu, T_array):
+    Delta_array=[]
+    Delta_ini=[]
+    for T in T_array:
+        BdG_sample=BdG(lattice_sample, V, T, mu, Delta=Delta_ini)
+        BdG_sample.BdG_cycle()
+        Delta_ini=BdG_sample.Delta     
+        Delta_array.append(BdG_sample.Delta)
+    
+    T_diagram_obj={'lattice_sample':lattice_sample, 'V':V, 'mu':mu, 'T_array':T_array, 'Delta_array':Delta_array}
+    filename="T_diagram_V={}_mode={}_fractiter={}.pickle".format(V, lattice_sample.mode, lattice_sample.fractal_iter)
+    pickle.dump(T_diagram_obj, file = open(filename, "wb"))
+    plot_T_diagram(T_diagram_obj)
 
 
+#plot \Delta-T diagram for a given sample
+def plot_T_diagram(T_diagram_obj):
+    
+    Nt=len(T_diagram_obj['T_array'])
+    V=T_diagram_obj['V']
+    T_array=np.array(T_diagram_obj['T_array'])
+    Delta_array=np.array(T_diagram_obj['Delta_array'])
+    lattice_sample=T_diagram_obj['lattice_sample']
+    
+    #print(Delta_array)
+    Delta_av=np.zeros(Nt)
+    for i in range(Nt):
+        Delta_av[i]=np.mean(Delta_array[i,:])
+        
+    plt.plot(T_array, Delta_av)
 
-#function to calculate different variants#
-def V_T_cycle(t,size):
-    mode = "triangle"
-    # N=27*27
-    # dis_list=[]
-    # for i in range(N):
-    #     x = random.random_sample()
-    #     if x >= 0.9:
-    #         dis_list.append(i)
+    title="V={} mode='{}' fractiter={}".format(V, lattice_sample.mode, lattice_sample.fractal_iter)
+    plt.xlabel("T")
+    plt.ylabel(r'$<\Delta>$')
+    plt.title(title)
 
-    sample_lat = Lattice(t, mode, size)
-    sample_lat.create_hamiltonian()
-    sample_frac_1 = Lattice(t, mode, size, fractal_iter=1)
-    sample_frac_1.create_hamiltonian()
-    sample_frac_2 = Lattice(t, mode, size, fractal_iter=2)
-    sample_frac_2.create_hamiltonian()
-    sample_frac_3= Lattice(t, mode, size, fractal_iter=4)
-    sample_frac_3.create_hamiltonian()
-    sample_dis_1 = Lattice(t, mode, size, alpha=0.1)
-    sample_dis_1.create_hamiltonian()
-    sample_dis_2 = Lattice(t, mode, size, alpha=0.2)
-    sample_dis_2.create_hamiltonian()
-    sample_dis_3 = Lattice(t, mode, size, alpha=0.3)
-    sample_dis_3.create_hamiltonian()
-    for j in range(2):
-
-        V=1.5+1.5*j
-        #print("params T=", T, " V=", V)
-        N_iter=50
-        Delta_lattice=[]
-        Delta_fractal_1=[]
-        Delta_fractal_2 = []
-        Delta_fractal_3 = []
-        Delta_disorder_1=[]
-        Delta_disorder_2 = []
-        Delta_disorder_3 = []
-        for i in range(N_iter):
-
-            T=0.01+0.01*i
-            print("V=",V,"T=", T)
-            print("BdG lattice triangle 33")
-
-            if i==0:
-                Delta, H = BdG_cycle(sample_lat, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_lat, V, T, Delta_ini=Delta_lattice_ini)
-            Delta_lattice.append(Delta)
-            Delta_lattice_ini=np.copy(Delta)
-            #
-            print("BdG fractal 1iter")
-
-            if i==0:
-                Delta, H = BdG_cycle(sample_frac_1, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_frac_1, V, T, Delta_ini=Delta_fractal1_ini)
-            Delta_fractal_1.append(Delta)
-            Delta_fractal1_ini = np.copy(Delta)
-
-            print("BdG fractal 2iter")
-
-            if i==0:
-                Delta, H = BdG_cycle(sample_frac_2, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_frac_2, V, T, Delta_ini=Delta_fractal2_ini)
-            Delta_fractal_2.append(Delta)
-            Delta_fractal2_ini = np.copy(Delta)
-
-            print("BdG fractal 4iter")
-
-            if i==0:
-                Delta, H = BdG_cycle(sample_frac_3, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_frac_3, V, T, Delta_ini=Delta_fractal3_ini)
-            Delta_fractal_3.append(Delta)
-            Delta_fractal3_ini = np.copy(Delta)
-
-            print("BdG lattice 10% disorder")
-            if i==0:
-                Delta, H = BdG_cycle(sample_dis_1, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_dis_1, V, T, Delta_ini=Delta_disorder1_ini)
-            Delta_disorder_1.append(Delta)
-            Delta_disorder1_ini = np.copy(Delta)
-
-            print("BdG lattice 20% disorder")
-
-            if i==0:
-                Delta, H = BdG_cycle(sample_dis_2, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_dis_2, V, T, Delta_ini=Delta_disorder2_ini)
-            Delta_disorder_2.append(Delta)
-            Delta_disorder2_ini = np.copy(Delta)
-            print("BdG lattice 30% disorder")
-
-            if i==0:
-                Delta, H = BdG_cycle(sample_dis_3, V, T, initial=False)
-            else:
-                Delta, H = BdG_cycle(sample_dis_3, V, T, Delta_ini=Delta_disorder3_ini)
-            Delta_disorder_3.append(Delta)
-            Delta_disorder3_ini = np.copy(Delta)
-
-        Delta_lattice = np.array(Delta_lattice)
-        Delta_fractal_1=np.array(Delta_fractal_1)
-        Delta_fractal_2=np.array(Delta_fractal_2)
-        Delta_fractal_3=np.array(Delta_fractal_3)
-        Delta_disorder_1=np.array(Delta_disorder_1)
-        Delta_disorder_2=np.array(Delta_disorder_2)
-        Delta_disorder_3=np.array(Delta_disorder_3)
-        np.save("V="+str(V)+"_triangle.npy", Delta_lattice)
-        np.save("V=" + str(V) + "_gasket_1iter.npy", Delta_fractal_1)
-        np.save("V=" + str(V) + "_gasket_2iter.npy", Delta_fractal_2)
-        np.save("V=" + str(V) + "_gasket_4iter.npy", Delta_fractal_3)
-        np.save("V=" + str(V) + "_triangle_disorder_1.npy", Delta_disorder_1)
-        np.save("V=" + str(V) + "_triangle_disorder_2.npy", Delta_disorder_2)
-        np.save("V=" + str(V) + "_triangle_disorder_3.npy", Delta_disorder_3)
-
-    return
-
-def plot_figures():
-
-    T=np.linspace(0.01, 0.5, num=50)
-    #print(T.shape)
-    type=["triangle", "triangle_disorder_1", "triangle_disorder_2", "triangle_disorder_3", "gasket_1iter", "gasket_2iter", "gasket_4iter"]
-    for str_type in type:
-        file_name="V=1.5_"+str_type+".npy"
-        Delta_T_array=np.load(file_name)
-        #print(Delta_T_array.shape)
-        N=Delta_T_array.shape[0]
-        Delta_max=np.zeros(N)
-        for i in range(N):
-            Delta_max[i]=np.max(np.abs(Delta_T_array[i,:]))
-        if str_type=="triangle":
-            legend="triangle L=33"
-        if str_type == "triangle_disorder_1":
-            legend = "10% holes"
-        if str_type == "triangle_disorder_2":
-            legend = "20% holes"
-        if str_type == "triangle_disorder_3":
-            legend = "30% holes"
-        if str_type == "gasket_1iter":
-            legend = "gasket 1 iteration"
-        if str_type == "gasket_2iter":
-            legend = "gasket 2 iteration"
-        if str_type == "gasket_4iter":
-            legend = "gasket 4 iteration"
-        plt.plot(T, Delta_max, label=legend)
-        plt.xlabel("T")
-        plt.ylabel(r'$\Delta_{max}$')
-        plt.title("V=1.5")
-    plt.legend()
-    plt.savefig("V=1.5_gasket_disorder.png")
+    figname="T_diagram_V={}_mode={}_fractiter={}.png".format(V, lattice_sample.mode, lattice_sample.fractal_iter)
+    plt.savefig(figname)
     plt.close()
 
-#figure of a lattice
-def show_graph(pos):
-    plt.scatter(pos[:,0], pos[:,1], s=4)
-    plt.savefig("graph.png")
-    plt.close()
 
 def main():
 
     mode="square"
     t=1
-    size=20
+    size=3
     T=1/20
-    V=1.6
+    V=0.8
     mu=0.0
-    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    BdG_sample=BdG(lattice_sample, V, T, mu)
-    BdG_sample.BdG_cycle()
+    
+    #lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    #BdG_sample=BdG(lattice_sample, V, T, mu)
+    #BdG_sample.BdG_cycle()
     #print(BdG_sample.spectra)
     
-    n=BdG_sample.charge_density()
-    print("charge density", np.sum(n)/len(lattice_sample.sites))
-    K=BdG_sample.local_kinetic_energy()
-    print("kinetic energy", np.sum(K)/len(lattice_sample.sites))
+    #n=BdG_sample.charge_density()
+    #print("charge density", np.sum(n)/len(lattice_sample.sites))
+    #K=BdG_sample.local_kinetic_energy()
+    #print("kinetic energy", np.sum(K)/len(lattice_sample.sites))
+    
+    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    T_array=np.linspace(0.01, 0.2, num=10)
+    T_diagram(lattice_sample, V, mu, T_array)
+
 
 
 main()

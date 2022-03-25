@@ -38,7 +38,7 @@ class Lattice():
             self.del_array=del_array
         #print("Hamiltonian parameteres: mode", self.mode, "dis_array", self.dis_array, "del_array", self.del_array)
         self.create_hamiltonian()
-
+        
     def create_list_of_sites(self):
 
         if self.mode == "triangle":
@@ -116,7 +116,7 @@ class Lattice():
                 if neigh_coord in test_site_set:
                     n_neigh = self.sites.index(neigh_coord)
                     #print("n_neigh, neigh_coord", n_neigh, neigh_coord)
-                    H[n_site,n_neigh]=self.hopping
+                    H[n_site,n_neigh]=-self.hopping
 
         self.hamiltonian = H
 
@@ -198,7 +198,7 @@ class Lattice():
                     n_neigh = self.sites.index(neigh_coord)
                     "edge test"
                     #print("n_neigh, neigh_coord", n_neigh, neigh_coord)
-                    H[n_site,n_neigh]=self.hopping
+                    H[n_site,n_neigh]=-self.hopping
 
         self.hamiltonian = H
 
@@ -264,11 +264,12 @@ class BdG():
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
         self.vectors=vectors
+        #print("spectra", spectra)
 
 
     #Fermi function
     def F(self, E):
-        return 1/(np.exp((E-self.mu)/self.T)+1)
+        return 1/(np.exp((E)/self.T)+1)
 
     def local_kinetic_energy(self):
         
@@ -344,7 +345,7 @@ class BdG():
 
     def construct_hamiltonian(self):
         H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
-        self.BdG_H = np.block([[self.lattice_H, H_Delta], [H_Delta, -self.lattice_H]])
+        self.BdG_H = np.block([[self.lattice_H - self.mu*np.eye(self.N), H_Delta], [H_Delta, -self.lattice_H + self.mu*np.eye(self.N)]])
     
     
     def charge_density(self):
@@ -369,8 +370,8 @@ class BdG():
             self.vectors=vectors
             
         while True:
-            vectors_up=self.V * np.conj(self.vectors[self.N:,:])
-            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,:], [0,1], np.tanh(self.spectra/ (2*self.T)),[1],[0])
+            vectors_up=self.V * np.conj(self.vectors[self.N:,self.N:])
+            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], np.ones(self.N)-2*self.F(self.spectra[self.N:]),[1],[0])
             error=np.max(np.abs((self.Delta-Delta_next)))
             self.Delta=Delta_next
             print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
@@ -381,6 +382,8 @@ class BdG():
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
+        
+        print("charge density, n", np.mean(self.charge_density()))
     
 
 #create \Delta-T diagram for a given sample
@@ -429,15 +432,15 @@ def main():
 
     mode="square"
     t=1
-    size=3
+    size=22
     T=1/20
-    V=0.8
-    mu=0.0
+    V=1.6
+    mu=-0.3
     
-    #lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    #BdG_sample=BdG(lattice_sample, V, T, mu)
-    #BdG_sample.BdG_cycle()
-    #print(BdG_sample.spectra)
+    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    # BdG_sample=BdG(lattice_sample, V, T, mu)
+    # BdG_sample.BdG_cycle()
+    # print(BdG_sample.spectra)
     
     #n=BdG_sample.charge_density()
     #print("charge density", np.sum(n)/len(lattice_sample.sites))
@@ -445,8 +448,10 @@ def main():
     #print("kinetic energy", np.sum(K)/len(lattice_sample.sites))
     
     lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    T_array=np.linspace(0.01, 0.2, num=10)
-    T_diagram(lattice_sample, V, mu, T_array)
+    for v in [V]:
+        V=round(v,2)
+        T_array=np.linspace(0.01, 0.15, num=100)
+        T_diagram(lattice_sample, V, mu, T_array)
 
 
 

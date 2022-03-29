@@ -384,6 +384,53 @@ class BdG():
             self.vectors=vectors
         
         print("charge density, n", np.mean(self.charge_density()))
+
+
+#Fermi function
+def F(epsilon,T):
+    return 1/(np.exp(epsilon/T)+1)
+
+#analytical formula for uniform case, for tests
+def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
+    
+    N_qy=100
+    k=np.linspace(0, 2*np.pi*(1-1/size), size)
+    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
+    Lambda=np.zeros(N_qy)
+    
+    # #energy test for uniform square with pbc
+    # for k_x in k:
+    #     for k_y in k:
+    #         print(k_x, k_y, -2*(np.cos(k_x)+np.cos(k_y)))
+    
+    if state=='normal':
+        
+        for i in range(N_qy):
+            for k_x in k:
+                for k_y in k:
+                    eps=-2*(np.cos(k_x)+np.cos(k_y))
+                    eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
+                    Lambda[i]+=-8/(size**2)*(np.sin(k_x)**2)*(F(eps,T)-F(eps_qy,T))/(eps-eps_qy+1j*10**(-6))
+        
+        return q_y, Lambda
+    
+    if state=='super':
+        
+        for i in range(N_qy):
+            for k_x in k:
+                for k_y in k:
+                    eps=-2*(np.cos(k_x)+np.cos(k_y))
+                    eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
+                    E=np.sqrt(eps**2 + Delta**2)
+                    E_qy=np.sqrt(eps_qy**2 + Delta**2)
+                    L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy))
+                    P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy))
+                    #print(L, P)
+                    
+                    Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))\
+                                                             +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
+        
+        return q_y, Lambda
     
 
 #create \Delta-T diagram for a given sample
@@ -432,26 +479,34 @@ def main():
 
     mode="square"
     t=1
-    size=22
+    size=64
     T=1/20
-    V=1.6
-    mu=-0.3
+    V=0.0
+    mu=0
     
     # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
     # BdG_sample=BdG(lattice_sample, V, T, mu)
     # BdG_sample.BdG_cycle()
     # print(BdG_sample.spectra)
+    # spectra, vectors = eigh(lattice_sample.hamiltonian)
+    # print(spectra)
+    
+    
+    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=1.38, state='super')
+    plt.plot(q_y, Lambda)
+    plt.savefig("lambda_test.png")
+    plt.close()
     
     #n=BdG_sample.charge_density()
     #print("charge density", np.sum(n)/len(lattice_sample.sites))
     #K=BdG_sample.local_kinetic_energy()
     #print("kinetic energy", np.sum(K)/len(lattice_sample.sites))
     
-    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    for v in [V]:
-        V=round(v,2)
-        T_array=np.linspace(0.01, 0.15, num=100)
-        T_diagram(lattice_sample, V, mu, T_array)
+    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    # for v in [V]:
+    #     V=round(v,2)
+    #     T_array=np.linspace(0.01, 0.25, num=100)
+    #     T_diagram(lattice_sample, V, mu, T_array)
 
 
 

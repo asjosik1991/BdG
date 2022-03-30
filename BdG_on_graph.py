@@ -292,18 +292,17 @@ class BdG():
 
 
     def twopoint_correlator(self, q_y):
-    
-        Lambda_part=np.zeros((self.N,self.N,self.N,self.N), dtype=complex)
+        
+        print("correlator is being calculated")
+        Lambda=np.zeros((len(q_y), self.N), dtype=complex)
         u=self.vectors[:self.N,:]
         v=self.vectors[self.N:,:]
         u_c=np.conj(u)
         v_c=np.conj(v)
         site_set=set(self.lattice_sample.sites)
-        a=np.zeros((self.N,self.N,self.N,self.N))
-        b=np.zeros((self.N,self.N,self.N,self.N))
-        c=np.zeros((self.N,self.N,self.N,self.N))
-        d=np.zeros((self.N,self.N,self.N,self.N))
+
         for i in range(self.N):
+            print('i site', i)
             for j in range(self.N):
                 for n in range(self.N):
                     for m in range(self.N):
@@ -315,25 +314,24 @@ class BdG():
                             i_x= self.lattice_sample.sites.index(coord_ix)
                             j_x= self.lattice_sample.sites.index(coord_jx)
     
-                            a[i,j,n,m]=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
+                            a=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
                                        +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
                                        + u[j_x,n]*u_c[i,n]*u[i_x,m]*u_c[j,m] - u_c[i,n]*v[j,n]*u[i_x,m]*v_c[j_x,m]
     
-                            b[i,j,n,m]=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
+                            b=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
                                        -u_c[i_x,n]*v[j,n]*v_c[i,m]*u[j_x,m] - u[j,n]*u_c[i,n]*v_c[i_x,m]*v[j_x,m]- u_c[i,n]*v[j_x,n]*v_c[i_x,m]*u[j,m]\
                                        + u[j_x,n]*u_c[i,n]*v_c[i_x,m]*v[j,m] + u_c[i,n]*v[j,n]*v_c[i_x,m]*u[j_x,m]
     
-                            c[i, j, n, m] =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
+                            c =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
                                        -v[i_x,n]*u_c[j,n]*u[i,m]*v_c[j_x,m] - v_c[j,n]*v[i,n]*u[i_x,m]*u_c[j_x,m]- v[i,n]*u_c[j_x,n]*u[i_x,m]*v_c[j,m]\
                                        + v_c[j_x,n]*v[i,n]*u[i_x,m]*u_c[j,m] + v[i,n]*u_c[j,n]*u[i_x,m]*v_c[j_x,m]
     
-                            d[i, j, n, m] = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
+                            d = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
                                        +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
                                        + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
     
-                            Lambda_part[i,j,n,m]=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a[i,j,n,m]+d[i,j,n,m])*(self.F(self.spectra[self.N+n])-self.F(self.spectra[self.N+m]))/(self.spectra[self.N+n]-self.spectra[self.N+m])
-                                                                        +(b[i,j,n,m]+c[i,j,n,m])*(self.F(self.spectra[self.N+n])+self.F(self.spectra[self.N+m]))/(self.spectra[self.N+n]+self.spectra[self.N+m]))
-        Lambda=np.sum(Lambda_part, axis=(1,2,3))
+                            Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(self.spectra[self.N+n])-self.F(self.spectra[self.N+m]))/(1j*10**(-6)+self.spectra[self.N+n]-self.spectra[self.N+m])
+                                                                        +(b+c)*(self.F(self.spectra[self.N+n])+self.F(self.spectra[self.N+m]))/(1j*10**(-6)+self.spectra[self.N+n]+self.spectra[self.N+m]))
         return Lambda
         
     def local_stiffness(self, q_y):
@@ -479,23 +477,30 @@ def main():
 
     mode="square"
     t=1
-    size=64
-    T=1/20
+    size=6
+    T=1
     V=0.0
     mu=0
     
-    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    # BdG_sample=BdG(lattice_sample, V, T, mu)
+    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    BdG_sample=BdG(lattice_sample, V, T, mu)
+    K=BdG_sample.local_kinetic_energy()
+    print("K", np.mean(K))
+    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 100)
+    Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
+    print('Lambda', Lambda)
+    
+    
     # BdG_sample.BdG_cycle()
     # print(BdG_sample.spectra)
     # spectra, vectors = eigh(lattice_sample.hamiltonian)
     # print(spectra)
     
     
-    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=1.38, state='super')
-    plt.plot(q_y, Lambda)
-    plt.savefig("lambda_test.png")
-    plt.close()
+    # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=1.38, state='normal')
+    # plt.plot(q_y, Lambda)
+    # plt.savefig("lambda_test.png")
+    # plt.close()
     
     #n=BdG_sample.charge_density()
     #print("charge density", np.sum(n)/len(lattice_sample.sites))

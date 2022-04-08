@@ -1,13 +1,12 @@
 import numpy as np
 from scipy.linalg import eigh
 import matplotlib.pyplot as plt
-from numpy import linalg as LA
-from scipy.sparse import diags, kron
+from scipy.sparse import diags
 from numpy import random
-import glob
-import os
-import networkx as nx
+import time
 import pickle
+from numba import jit
+
 
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
@@ -270,23 +269,38 @@ class BdG():
     #Fermi function
     def F(self, E):
         return 1/(np.exp((E)/self.T)+1)
-
+   
+    #@jit(nopython=True)
     def local_kinetic_energy(self):
         
         site_set=set(self.lattice_sample.sites)
-        K=np.zeros(self.N)
+        K=np.zeros(self.N, dtype=complex)
+        u=self.vectors[:self.N,self.N:]
+        v=self.vectors[self.N:,self.N:]
+        energies=self.spectra[self.N:]
+        #print(energies)
+        # for i in range(self.N):
+        #     print(np.dot(np.dot(self.lattice_H, v[:,i]),v[:,i]), np.dot(np.dot(self.BdG_H, self.vectors[:,self.N+i]),self.vectors[:,self.N+i]))
+        
+        # for n in range(self.N):
+        #     print(u[:,n], energies[n])
+            
+        print("Kinetic energy is being calculated")
     
         for i in range(self.N): #cycle over indices
+            #print("site", i)
             for n in range(self.N):
                 coord=self.lattice_sample.sites[i]
                 if self.pbc:
                     coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
+                    #print(coord, coord_x)
                 else:
                     coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
                 if coord_x in site_set:
                     i_x=self.lattice_sample.sites.index(coord_x)
-                    K[i]=self.hopping*((np.conj(self.vectors[i_x,n])*self.vectors[i,n]+np.conj(self.vectors[i,n])*self.vectors[i_x,n])*self.F(self.spectra[self.N+n])+
-                            (np.conj(self.vectors[i_x,self.N+n])*self.vectors[i,self.N+n]+np.conj(self.vectors[i,self.N+n])*self.vectors[i_x,self.N+n])*(1-self.F(self.spectra[self.N+n])))
+                    #print(i, i_x)
+                    K[i]=2*self.hopping*((np.conj(u[i_x,n])*u[i,n]+np.conj(u[i,n])*u[i_x,n])*self.F(energies[n])
+                                         +(np.conj(v[i_x,n])*v[i,n]+np.conj(v[i,n])*v[i_x,n])*(self.F(-energies[n])))
         #K=K/N
         return K
 
@@ -347,11 +361,11 @@ class BdG():
     
     
     def charge_density(self):
-        energies=self.F(self.spectra[self.N:])
+        fermi_dist=self.F(self.spectra[self.N:])
         #print(energies)
         v=self.vectors[self.N:,self.N:]
         u=self.vectors[:self.N,self.N:]
-        n=2*np.einsum(u,[0,1],np.conj(u), [0,1],energies,[1],[0])+2*np.einsum(v,[0,1],np.conj(v), [0,1],np.ones(self.N)-energies,[1],[0])
+        n=2*np.einsum(u,[0,1],np.conj(u), [0,1],fermi_dist,[1],[0])+2*np.einsum(v,[0,1],np.conj(v), [0,1],np.ones(self.N)-fermi_dist,[1],[0])
     
         return n
     
@@ -393,7 +407,7 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
     
     N_qy=100
     k=np.linspace(0, 2*np.pi*(1-1/size), size)
-    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
+    q_y=np.linspace(2*np.pi/N_qy, 2*np.pi*(1-1/N_qy), N_qy)
     Lambda=np.zeros(N_qy)
     
     # #energy test for uniform square with pbc
@@ -408,26 +422,40 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
                 for k_y in k:
                     eps=-2*(np.cos(k_x)+np.cos(k_y))
                     eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
-                    Lambda[i]+=-8/(size**2)*(np.sin(k_x)**2)*(F(eps,T)-F(eps_qy,T))/(eps-eps_qy+1j*10**(-6))
+                    #print(eps, eps_qy)
+                    Lambda[i]+=np.real(-8/(size**2)*(np.sin(k_x)**2)*(F(eps,T)-F(eps_qy,T))/(eps-eps_qy+1j*10**(-6)))
+            
+        #kinetic energy from limit
+        K_simple=0
+        K_withderivative=0
+        for k_x in k:
+            for k_y in k:
+                eps=-2*(np.cos(k_x)+np.cos(k_y))
+                K_simple+=4*np.cos(k_x)*F(eps,T)/(size**2)
+                K_withderivative+=8*(np.sin(k_x)**2)/(4*T*(size**2)*(np.cosh(eps/(2*T))**2))
+
+        print("analytic kinetic energy", K_simple, K_withderivative, "from limit", Lambda[0])
         
         return q_y, Lambda
     
     if state=='super':
         
         for i in range(N_qy):
+            #print("q_y", q_y[i])
             for k_x in k:
                 for k_y in k:
                     eps=-2*(np.cos(k_x)+np.cos(k_y))
                     eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
                     E=np.sqrt(eps**2 + Delta**2)
                     E_qy=np.sqrt(eps_qy**2 + Delta**2)
-                    L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy))
-                    P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy))
-                    #print(L, P)
-                    
-                    Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))\
+                    L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
+                    P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
+                    #print(np.round(L,4), np.round(P,4), E, E_qy)
+                    Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))
                                                              +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
-        
+                    
+                    #Lambda[i]+=np.real(-8/(size**2)*(np.sin(k_x)**2)*(F(E,T)-F(E_qy,T))/(E-E_qy+1j*10**(-6)))
+
         return q_y, Lambda
     
 
@@ -477,18 +505,22 @@ def main():
 
     mode="square"
     t=1
-    size=6
-    T=1
+    size=40
+    T=1/2
     V=0.0
     mu=0
     
-    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    BdG_sample=BdG(lattice_sample, V, T, mu)
-    K=BdG_sample.local_kinetic_energy()
-    print("K", np.mean(K))
-    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 100)
-    Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
-    print('Lambda', Lambda)
+    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    # BdG_sample=BdG(lattice_sample, V, T, mu)
+    # time1=time.time()
+    # K=BdG_sample.local_kinetic_energy()
+    #print("K", K)
+    # print("mean K", np.mean(K))
+    # time2=time.time()
+    # print("kinetic energy time", time2-time1)
+    # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 100)
+    # Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
+    # print('Lambda', Lambda)
     
     
     # BdG_sample.BdG_cycle()
@@ -497,10 +529,17 @@ def main():
     # print(spectra)
     
     
-    # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=1.38, state='normal')
-    # plt.plot(q_y, Lambda)
-    # plt.savefig("lambda_test.png")
-    # plt.close()
+    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0, state='normal')
+    print("zero limit", Lambda[0])
+    plt.plot(q_y, Lambda)
+    plt.savefig("lambda_test_normal.png")
+    plt.close()
+    
+    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0.01, state='super')
+    print("zero limit", Lambda[0])
+    plt.plot(q_y, Lambda)
+    plt.savefig("lambda_test_super.png")
+    plt.close()
     
     #n=BdG_sample.charge_density()
     #print("charge density", np.sum(n)/len(lattice_sample.sites))

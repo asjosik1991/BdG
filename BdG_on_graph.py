@@ -12,6 +12,7 @@ from numba import jit
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class Lattice():
     def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None, pbc=False):
+
         if mode=="triangle":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,-1)]
         if mode=="square":
@@ -172,7 +173,7 @@ class Lattice():
         print("l_min", l_min)
         for n_site in range(N):
             #print("n_site, n_coord", n_site, self.sites[n_site])
-            #site_coord=
+
             x=self.sites[n_site][0]
             y=self.sites[n_site][1]
             #print("site", x,y)
@@ -286,10 +287,11 @@ class BdG():
         #     print(u[:,n], energies[n])
             
         print("Kinetic energy is being calculated")
-    
+        # print("one particle H", self.lattice_H)
         for i in range(self.N): #cycle over indices
-            #print("site", i)
+            # print("site", i)
             for n in range(self.N):
+                # print("energy", round(energies[n],3))
                 coord=self.lattice_sample.sites[i]
                 if self.pbc:
                     coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
@@ -299,8 +301,11 @@ class BdG():
                 if coord_x in site_set:
                     i_x=self.lattice_sample.sites.index(coord_x)
                     #print(i, i_x)
-                    K[i]=2*self.hopping*((np.conj(u[i_x,n])*u[i,n]+np.conj(u[i,n])*u[i_x,n])*self.F(energies[n])
-                                         +(np.conj(v[i_x,n])*v[i,n]+np.conj(v[i,n])*v[i_x,n])*(self.F(-energies[n])))
+                    # print("u", np.round(u[:,n],3) , round(u[i,n],3), round(u[i_x, n],3))
+                    # print("v", np.round(v[:,n],3) , round(v[i,n],3), round(v[i_x, n],3))
+                    # print("u_u", np.round(2*u[i_x,n]*u[i,n], 3), "v_v", np.round(2*v[i_x,n]*v[i,n], 3))
+                    K[i]+=2*self.hopping*((np.conj(u[i_x,n])*u[i,n]+np.conj(u[i,n])*u[i_x,n])*self.F(energies[n])
+                                         +(np.conj(v[i_x,n])*v[i,n]+np.conj(v[i,n])*v[i_x,n])*self.F(-energies[n]))
         #K=K/N
         return K
 
@@ -410,11 +415,6 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
     q_y=np.linspace(2*np.pi/N_qy, 2*np.pi*(1-1/N_qy), N_qy)
     Lambda=np.zeros(N_qy)
     
-    # #energy test for uniform square with pbc
-    # for k_x in k:
-    #     for k_y in k:
-    #         print(k_x, k_y, -2*(np.cos(k_x)+np.cos(k_y)))
-    
     if state=='normal':
         
         for i in range(N_qy):
@@ -430,11 +430,13 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
         K_withderivative=0
         for k_x in k:
             for k_y in k:
+                
                 eps=-2*(np.cos(k_x)+np.cos(k_y))
+                # print('kx, ky, eps', np.round(k_x/np.pi, 2), np.round(k_y/np.pi, 2), np.round(eps,2))
                 K_simple+=4*np.cos(k_x)*F(eps,T)/(size**2)
                 K_withderivative+=8*(np.sin(k_x)**2)/(4*T*(size**2)*(np.cosh(eps/(2*T))**2))
 
-        print("analytic kinetic energy", K_simple, K_withderivative, "from limit", Lambda[0])
+        print("analytic kinetic energy", K_simple, "\n analytical limit", K_withderivative, "\n numerical limit", Lambda[0])
         
         return q_y, Lambda
     
@@ -505,18 +507,20 @@ def main():
 
     mode="square"
     t=1
-    size=40
-    T=1/2
-    V=0.0
+    size=21
+    T=1/50
+    V=4.0
     mu=0
     
-    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    # BdG_sample=BdG(lattice_sample, V, T, mu)
-    # time1=time.time()
-    # K=BdG_sample.local_kinetic_energy()
-    #print("K", K)
-    # print("mean K", np.mean(K))
-    # time2=time.time()
+    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    BdG_sample=BdG(lattice_sample, V, T, mu)
+    BdG_sample.BdG_cycle()
+    time1=time.time()
+    K=BdG_sample.local_kinetic_energy()
+    # print("K", K)
+    print("mean K", np.mean(K))
+    time2=time.time()
+    #print("spectra", BdG_sample.spectra)
     # print("kinetic energy time", time2-time1)
     # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 100)
     # Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
@@ -526,20 +530,21 @@ def main():
     # BdG_sample.BdG_cycle()
     # print(BdG_sample.spectra)
     # spectra, vectors = eigh(lattice_sample.hamiltonian)
-    # print(spectra)
+    #print(spectra)
     
     
-    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0, state='normal')
-    print("zero limit", Lambda[0])
-    plt.plot(q_y, Lambda)
-    plt.savefig("lambda_test_normal.png")
-    plt.close()
+    # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0, state='normal')
+    # # print("zero limit", Lambda[0])
+    # plt.plot(q_y, Lambda)
+    # plt.savefig("lambda_test_normal.png")
+    # plt.close()
     
-    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0.01, state='super')
-    print("zero limit", Lambda[0])
-    plt.plot(q_y, Lambda)
-    plt.savefig("lambda_test_super.png")
-    plt.close()
+ 
+    # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0.0, state='super')
+    # print("zero limit", Lambda[0])
+    # plt.plot(q_y, Lambda)
+    # plt.savefig("lambda_test_super.png")
+    # plt.close()
     
     #n=BdG_sample.charge_density()
     #print("charge density", np.sum(n)/len(lattice_sample.sites))

@@ -309,46 +309,82 @@ class BdG():
     def twopoint_correlator(self, q_y):
         
         print("correlator is being calculated")
+        site_set=set(self.lattice_sample.sites)
         Lambda=np.zeros((len(q_y), self.N), dtype=complex)
         u=self.vectors[:self.N,:]
         v=self.vectors[self.N:,:]
-        energies=self.spectra[self.N:]
-
-        u_c=np.conj(u)
-        v_c=np.conj(v)
-        site_set=set(self.lattice_sample.sites)
-
+        
+        u_x=np.zeros((self.N,2*self.N))
+        v_x=np.zeros((self.N,2*self.N))   
+        
+        #prepare translated eigenvectors
         for i in range(self.N):
-            print('i site', i)
-            for j in range(self.N):
-                for n in range(self.N):
-                    for m in range(self.N):
-                        coord_i=self.lattice_sample.sites[i]
-                        coord_ix= tuple(a + b for a, b in zip(coord_i, (1,0)))
-                        coord_j=self.lattice_sample.sites[i]
-                        coord_jx= tuple(a + b for a, b in zip(coord_j, (1,0)))
-                        if (coord_ix in site_set) and (coord_jx in site_set):
-                            i_x= self.lattice_sample.sites.index(coord_ix)
-                            j_x= self.lattice_sample.sites.index(coord_jx)
+            coord=self.lattice_sample.sites[i]
+            if self.pbc:
+                coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
+                #print(coord, coord_x)
+            else:
+                coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
+            if coord_x in site_set:
+                i_x=self.lattice_sample.sites.index(coord_x)
+                u_x[i,:]=u[i_x,:]
+                v_x[i,:]=v[i_x,:]
+
+        # e_q=np.exp(qy*)
+        # e_mq=np.exp(-qy*)
+        # uu_x=np.zeros((self.N,2*self.N,2*self.N))
+        # vv_x=np.zeros((self.N,2*self.N,2*self.N))
+        # for i in range(self.N): 
+        #     uu_x[i,...]=np.einsum(np.conj(u[i,:]), [1], u_x[i,:], [2], [1,2])
+        #     vv_x[i,...]=np.einsum(np.conj(v[i,:]), [1], v_x[i,:], [2], [1,2])
+        
+        #prepare fermi weight
+        energy_diff=c = np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
+        fermi_diff=c = np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
+        F_weight=fermi_diff/energy_diff
+
+
+        uu_x=np.einsum(np.conj(u), [0,1], u_x, [0,2], [0,1,2])
+        vv_x=np.einsum(np.conj(u), [0,1], u_x, [0,2], [0,1,2])
+        A=uu_x-np.conj(np.einsum(uu_x,[0,2,1]))
+        D=vv_x-np.conj(np.einsum(vv_x,[0,2,1]))
+
+        Lambda=np.einsum(A,[0,2,3],np.conj(A)-D,[1,2,3],F_weight,[2,3],[0,1])
+ 
+        # u_c=np.conj(u)
+        # v_c=np.conj(v)
+
+        # for i in range(self.N):
+        #     print('i site', i)
+        #     for j in range(self.N):
+        #         for n in range(self.N):
+        #             for m in range(self.N):
+        #                 coord_i=self.lattice_sample.sites[i]
+        #                 coord_ix= tuple(a + b for a, b in zip(coord_i, (1,0)))
+        #                 coord_j=self.lattice_sample.sites[i]
+        #                 coord_jx= tuple(a + b for a, b in zip(coord_j, (1,0)))
+        #                 if (coord_ix in site_set) and (coord_jx in site_set):
+        #                     i_x= self.lattice_sample.sites.index(coord_ix)
+        #                     j_x= self.lattice_sample.sites.index(coord_jx)
     
-                            a=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
-                                       +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
-                                       + u[j_x,n]*u_c[i,n]*u[i_x,m]*u_c[j,m] - u_c[i,n]*v[j,n]*u[i_x,m]*v_c[j_x,m]
+        #                     a=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
+        #                                +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
+        #                                + u[j_x,n]*u_c[i,n]*u[i_x,m]*u_c[j,m] - u_c[i,n]*v[j,n]*u[i_x,m]*v_c[j_x,m]
     
-                            b=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
-                                       -u_c[i_x,n]*v[j,n]*v_c[i,m]*u[j_x,m] - u[j,n]*u_c[i,n]*v_c[i_x,m]*v[j_x,m]- u_c[i,n]*v[j_x,n]*v_c[i_x,m]*u[j,m]\
-                                       + u[j_x,n]*u_c[i,n]*v_c[i_x,m]*v[j,m] + u_c[i,n]*v[j,n]*v_c[i_x,m]*u[j_x,m]
+        #                     b=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
+        #                                -u_c[i_x,n]*v[j,n]*v_c[i,m]*u[j_x,m] - u[j,n]*u_c[i,n]*v_c[i_x,m]*v[j_x,m]- u_c[i,n]*v[j_x,n]*v_c[i_x,m]*u[j,m]\
+        #                                + u[j_x,n]*u_c[i,n]*v_c[i_x,m]*v[j,m] + u_c[i,n]*v[j,n]*v_c[i_x,m]*u[j_x,m]
     
-                            c =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
-                                       -v[i_x,n]*u_c[j,n]*u[i,m]*v_c[j_x,m] - v_c[j,n]*v[i,n]*u[i_x,m]*u_c[j_x,m]- v[i,n]*u_c[j_x,n]*u[i_x,m]*v_c[j,m]\
-                                       + v_c[j_x,n]*v[i,n]*u[i_x,m]*u_c[j,m] + v[i,n]*u_c[j,n]*u[i_x,m]*v_c[j_x,m]
+        #                     c =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
+        #                                -v[i_x,n]*u_c[j,n]*u[i,m]*v_c[j_x,m] - v_c[j,n]*v[i,n]*u[i_x,m]*u_c[j_x,m]- v[i,n]*u_c[j_x,n]*u[i_x,m]*v_c[j,m]\
+        #                                + v_c[j_x,n]*v[i,n]*u[i_x,m]*u_c[j,m] + v[i,n]*u_c[j,n]*u[i_x,m]*v_c[j_x,m]
     
-                            d = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
-                                       +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
-                                       + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
+        #                     d = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
+        #                                +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
+        #                                + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
     
-                            Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(energies[n])-self.F(energies[m]))/(1j*10**(-6)+energies[n]-energies[m])
-                                                                        +(b+c)*(self.F(energies[n])+self.F(energies[m]))/(1j*10**(-6)+energies[n]+energies[m]))
+        #                     Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(energies[n])-self.F(energies[m]))/(1j*10**(-6)+energies[n]-energies[m])
+        #                                                                 +(b+c)*(self.F(energies[n])+self.F(energies[m]))/(1j*10**(-6)+energies[n]+energies[m]))
         return Lambda
         
     def local_stiffness(self, q_y):
@@ -505,7 +541,7 @@ def main():
 
     mode="square"
     t=1
-    size=60
+    size=20
     T=1
     V=0.0
     mu=0
@@ -513,17 +549,17 @@ def main():
     lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
     #BdG_sample.BdG_cycle()
-    time1=time.time()
-    K=BdG_sample.local_kinetic_energy()
+    # time1=time.time()
+    # K=BdG_sample.local_kinetic_energy()
     # print("K", K)
-    print("mean K", np.mean(K))
-    time2=time.time()
-    print("kinenergy time", time2-time1)
+    # print("mean K", np.mean(K))
+    # time2=time.time()
+    # print("kinenergy time", time2-time1)
     #print("spectra", BdG_sample.spectra)
     # print("kinetic energy time", time2-time1)
-    # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 10)
-    # Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
-    # print('Lambda', Lambda)
+    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 10)
+    Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
+    print('Lambda', Lambda)
     
     
     # BdG_sample.BdG_cycle()

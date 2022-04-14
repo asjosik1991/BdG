@@ -274,39 +274,35 @@ class BdG():
     #@jit(nopython=True)
     def local_kinetic_energy(self):
         
+        print("Kinetic energy is being calculated")
+        
         site_set=set(self.lattice_sample.sites)
         K=np.zeros(self.N, dtype=complex)
         u=self.vectors[:self.N,self.N:]
         v=self.vectors[self.N:,self.N:]
         energies=self.spectra[self.N:]
-        #print(energies)
-        # for i in range(self.N):
-        #     print(np.dot(np.dot(self.lattice_H, v[:,i]),v[:,i]), np.dot(np.dot(self.BdG_H, self.vectors[:,self.N+i]),self.vectors[:,self.N+i]))
         
-        # for n in range(self.N):
-        #     print(u[:,n], energies[n])
-            
-        print("Kinetic energy is being calculated")
-        # print("one particle H", self.lattice_H)
-        for i in range(self.N): #cycle over indices
-            # print("site", i)
-            for n in range(self.N):
-                # print("energy", round(energies[n],3))
-                coord=self.lattice_sample.sites[i]
-                if self.pbc:
-                    coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
-                    #print(coord, coord_x)
-                else:
-                    coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
-                if coord_x in site_set:
-                    i_x=self.lattice_sample.sites.index(coord_x)
-                    #print(i, i_x)
-                    # print("u", np.round(u[:,n],3) , round(u[i,n],3), round(u[i_x, n],3))
-                    # print("v", np.round(v[:,n],3) , round(v[i,n],3), round(v[i_x, n],3))
-                    # print("u_u", np.round(2*u[i_x,n]*u[i,n], 3), "v_v", np.round(2*v[i_x,n]*v[i,n], 3))
-                    K[i]+=2*self.hopping*((np.conj(u[i_x,n])*u[i,n]+np.conj(u[i,n])*u[i_x,n])*self.F(energies[n])
-                                         +(np.conj(v[i_x,n])*v[i,n]+np.conj(v[i,n])*v[i_x,n])*self.F(-energies[n]))
-        #K=K/N
+        u_x=np.zeros((self.N,self.N))
+        v_x=np.zeros((self.N,self.N))               
+        
+        #prepare translated eigenvectors
+        for i in range(self.N):
+            coord=self.lattice_sample.sites[i]
+            if self.pbc:
+                coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
+                #print(coord, coord_x)
+            else:
+                coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
+            if coord_x in site_set:
+                i_x=self.lattice_sample.sites.index(coord_x)
+                u_x[i,:]=u[i_x,:]
+                v_x[i,:]=v[i_x,:]
+        
+        uu_x=2*self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
+        vv_x=2*self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
+        
+        K=np.einsum(uu_x,[0,1],self.F(energies),[1],[0])+np.einsum(vv_x,[0,1],self.F(-energies),[1],[0])
+
         return K
 
 
@@ -316,6 +312,8 @@ class BdG():
         Lambda=np.zeros((len(q_y), self.N), dtype=complex)
         u=self.vectors[:self.N,:]
         v=self.vectors[self.N:,:]
+        energies=self.spectra[self.N:]
+
         u_c=np.conj(u)
         v_c=np.conj(v)
         site_set=set(self.lattice_sample.sites)
@@ -349,8 +347,8 @@ class BdG():
                                        +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
                                        + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
     
-                            Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(self.spectra[self.N+n])-self.F(self.spectra[self.N+m]))/(1j*10**(-6)+self.spectra[self.N+n]-self.spectra[self.N+m])
-                                                                        +(b+c)*(self.F(self.spectra[self.N+n])+self.F(self.spectra[self.N+m]))/(1j*10**(-6)+self.spectra[self.N+n]+self.spectra[self.N+m]))
+                            Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(energies[n])-self.F(energies[m]))/(1j*10**(-6)+energies[n]-energies[m])
+                                                                        +(b+c)*(self.F(energies[n])+self.F(energies[m]))/(1j*10**(-6)+energies[n]+energies[m]))
         return Lambda
         
     def local_stiffness(self, q_y):
@@ -507,22 +505,23 @@ def main():
 
     mode="square"
     t=1
-    size=21
-    T=1/50
-    V=4.0
+    size=60
+    T=1
+    V=0.0
     mu=0
     
     lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
-    BdG_sample.BdG_cycle()
+    #BdG_sample.BdG_cycle()
     time1=time.time()
     K=BdG_sample.local_kinetic_energy()
     # print("K", K)
     print("mean K", np.mean(K))
     time2=time.time()
+    print("kinenergy time", time2-time1)
     #print("spectra", BdG_sample.spectra)
     # print("kinetic energy time", time2-time1)
-    # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 100)
+    # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 10)
     # Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
     # print('Lambda', Lambda)
     

@@ -324,8 +324,8 @@ class BdG():
         for i in range(self.N):
             coord=self.lattice_sample.sites[i]
             
-            exp_a[i]=np.exp(-1j*q_y*coord[0])
-            exp_d[i]=np.exp(1j*q_y*coord[0])
+            exp_a[i]=np.exp(-1j*q_y*coord[1])
+            exp_d[i]=np.exp(1j*q_y*coord[1])
 
             if self.pbc:
                 coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
@@ -347,15 +347,27 @@ class BdG():
         
         #prepare fermi weight
         
+        # F_weight_test=np.zeros((2*self.N,2*self.N))
+        # for i in range(2*self.N):
+        #     for j in range(2*self.N):
+        #         F_weight_test[i,j]=(self.F(self.spectra[i])-self.F(self.spectra[j]))/(self.spectra[i]-self.spectra[j]+1j*10**(-6))
+        
         energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
         fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
         F_weight=fermi_diff/energy_diff
+        
+        # print("F_test", np.max(np.abs(F_weight-F_weight_test)))
+        
+        
 
 
-        uu_x=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
-        vv_x=np.einsum(exp_d, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
-        A=uu_x-np.conj(np.einsum(uu_x,[2,1]))
-        D=vv_x-np.conj(np.einsum(vv_x,[2,1]))
+        uu_x=np.einsum(exp_a, [0], np.conj(u_x), [0,1], u, [0,2], [1,2])
+        vv_x=np.einsum(exp_d, [0], np.conj(v_x), [0,1], v, [0,2], [1,2])
+        uu_x_t=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
+        vv_x_t=np.einsum(exp_d, [0], np.conj(v), [0,1], v_x, [0,2], [1,2])
+        
+        A=uu_x-uu_x_t
+        D=vv_x-vv_x_t
         
         Lambda=1/self.N*np.einsum(A, [0,1], np.conj(A)+D, [0,1], F_weight, [0,1])
         
@@ -567,6 +579,10 @@ def main():
     # print("kinenergy time", time2-time1)
     #print("spectra", BdG_sample.spectra)
     # print("kinetic energy time", time2-time1)
+    
+    # q_y=2*np.pi/100
+    # Lambda=BdG_sample.twopoint_correlator(q_y)
+    # print("lambda", Lambda)
     
     N_qy=100
     q_y=np.linspace(2*np.pi/N_qy, 2*np.pi*(1-1/N_qy), N_qy)

@@ -310,16 +310,23 @@ class BdG():
         
         print("correlator is being calculated")
         site_set=set(self.lattice_sample.sites)
-        Lambda=np.zeros((len(q_y), self.N), dtype=complex)
+        # Lambda=np.zeros((len(q_y), self.N), dtype=complex)
         u=self.vectors[:self.N,:]
         v=self.vectors[self.N:,:]
         
         u_x=np.zeros((self.N,2*self.N))
-        v_x=np.zeros((self.N,2*self.N))   
+        v_x=np.zeros((self.N,2*self.N))
+        exp_a=np.zeros(self.N, dtype=complex)
+        exp_d=np.zeros(self.N, dtype=complex)
+
         
         #prepare translated eigenvectors
         for i in range(self.N):
             coord=self.lattice_sample.sites[i]
+            
+            exp_a[i]=np.exp(-1j*q_y*coord[0])
+            exp_d[i]=np.exp(1j*q_y*coord[0])
+
             if self.pbc:
                 coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
                 #print(coord, coord_x)
@@ -339,17 +346,20 @@ class BdG():
         #     vv_x[i,...]=np.einsum(np.conj(v[i,:]), [1], v_x[i,:], [2], [1,2])
         
         #prepare fermi weight
-        energy_diff=c = np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
-        fermi_diff=c = np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
+        
+        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
+        fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
         F_weight=fermi_diff/energy_diff
 
 
-        uu_x=np.einsum(np.conj(u), [0,1], u_x, [0,2], [0,1,2])
-        vv_x=np.einsum(np.conj(u), [0,1], u_x, [0,2], [0,1,2])
-        A=uu_x-np.conj(np.einsum(uu_x,[0,2,1]))
-        D=vv_x-np.conj(np.einsum(vv_x,[0,2,1]))
+        uu_x=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
+        vv_x=np.einsum(exp_d, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
+        A=uu_x-np.conj(np.einsum(uu_x,[2,1]))
+        D=vv_x-np.conj(np.einsum(vv_x,[2,1]))
+        
+        Lambda=1/self.N*np.einsum(A, [0,1], np.conj(A)+D, [0,1], F_weight, [0,1])
+        
 
-        Lambda=np.einsum(A,[0,2,3],np.conj(A)-D,[1,2,3],F_weight,[2,3],[0,1])
  
         # u_c=np.conj(u)
         # v_c=np.conj(v)
@@ -541,7 +551,7 @@ def main():
 
     mode="square"
     t=1
-    size=20
+    size=10
     T=1
     V=0.0
     mu=0
@@ -557,10 +567,15 @@ def main():
     # print("kinenergy time", time2-time1)
     #print("spectra", BdG_sample.spectra)
     # print("kinetic energy time", time2-time1)
-    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), 10)
-    Lambda=np.mean(BdG_sample.twopoint_correlator(q_y), axis=1)
-    print('Lambda', Lambda)
     
+    N_qy=100
+    q_y=np.linspace(2*np.pi/N_qy, 2*np.pi*(1-1/N_qy), N_qy)
+    Lambda=[]
+    for q in q_y:
+        Lambda.append(BdG_sample.twopoint_correlator(q))
+    plt.plot(q_y, Lambda)
+    plt.savefig("lambda_numerical_test.png")
+    plt.close()
     
     # BdG_sample.BdG_cycle()
     # print(BdG_sample.spectra)
@@ -568,11 +583,11 @@ def main():
     #print(spectra)
     
     
-    # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0, state='normal')
-    # # print("zero limit", Lambda[0])
-    # plt.plot(q_y, Lambda)
-    # plt.savefig("lambda_test_normal.png")
-    # plt.close()
+    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0, state='normal')
+    # print("zero limit", Lambda[0])
+    plt.plot(q_y, Lambda)
+    plt.savefig("lambda_test_normal.png")
+    plt.close()
     
  
     # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0.0, state='super')

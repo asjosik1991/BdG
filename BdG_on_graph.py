@@ -337,8 +337,7 @@ class BdG():
                 u_x[i,:]=u[i_x,:]
                 v_x[i,:]=v[i_x,:]
 
-        # e_q=np.exp(qy*)
-        # e_mq=np.exp(-qy*)
+
         # uu_x=np.zeros((self.N,2*self.N,2*self.N))
         # vv_x=np.zeros((self.N,2*self.N,2*self.N))
         # for i in range(self.N): 
@@ -362,14 +361,22 @@ class BdG():
 
 
         uu_x=np.einsum(exp_a, [0], np.conj(u_x), [0,1], u, [0,2], [1,2])
-        vv_x=np.einsum(exp_d, [0], np.conj(v_x), [0,1], v, [0,2], [1,2])
         uu_x_t=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
-        vv_x_t=np.einsum(exp_d, [0], np.conj(v), [0,1], v_x, [0,2], [1,2])
+
+        # vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])
+        # vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])
         
         A=uu_x-uu_x_t
-        D=vv_x-vv_x_t
+        # D=vv_x-vv_x_t
         
-        Lambda=1/self.N*np.einsum(A, [0,1], np.conj(A)+D, [0,1], F_weight, [0,1])
+        Lambda=1/self.N*np.einsum(A, [0,1], np.conj(A), [0,1], F_weight, [0,1])
+        
+        #test
+        # k=np.linspace(0, 2*np.pi*(1-1/self.size), self.size)
+        
+        # K_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
+
+
         
 
  
@@ -407,6 +414,7 @@ class BdG():
     
         #                     Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(energies[n])-self.F(energies[m]))/(1j*10**(-6)+energies[n]-energies[m])
         #                                                                 +(b+c)*(self.F(energies[n])+self.F(energies[m]))/(1j*10**(-6)+energies[n]+energies[m]))
+        
         return Lambda
         
     def local_stiffness(self, q_y):
@@ -563,7 +571,7 @@ def main():
 
     mode="square"
     t=1
-    size=10
+    size=9
     T=1
     V=0.0
     mu=0
@@ -585,10 +593,14 @@ def main():
     # print("lambda", Lambda)
     
     N_qy=100
-    q_y=np.linspace(2*np.pi/N_qy, 2*np.pi*(1-1/N_qy), N_qy)
+    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
     Lambda=[]
+    i=0
     for q in q_y:
+        print("i", i, "q", q)
         Lambda.append(BdG_sample.twopoint_correlator(q))
+        print("Lambda", Lambda[i])
+        i+=1
     plt.plot(q_y, Lambda)
     plt.savefig("lambda_numerical_test.png")
     plt.close()

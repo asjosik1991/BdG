@@ -363,58 +363,19 @@ class BdG():
         uu_x=np.einsum(exp_a, [0], np.conj(u_x), [0,1], u, [0,2], [1,2])
         uu_x_t=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
 
-        # vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])
-        # vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])
+        vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])
+        vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])
         
         A=uu_x-uu_x_t
-        # D=vv_x-vv_x_t
+        D=vv_x-vv_x_t
         
-        Lambda=1/self.N*np.einsum(A, [0,1], np.conj(A), [0,1], F_weight, [0,1])
+        Lambda=-2/self.N*np.einsum(A, [0,1], np.conj(A)+D, [0,1], F_weight, [0,1])
         
         #test
         # k=np.linspace(0, 2*np.pi*(1-1/self.size), self.size)
         
         # K_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
 
-
-        
-
- 
-        # u_c=np.conj(u)
-        # v_c=np.conj(v)
-
-        # for i in range(self.N):
-        #     print('i site', i)
-        #     for j in range(self.N):
-        #         for n in range(self.N):
-        #             for m in range(self.N):
-        #                 coord_i=self.lattice_sample.sites[i]
-        #                 coord_ix= tuple(a + b for a, b in zip(coord_i, (1,0)))
-        #                 coord_j=self.lattice_sample.sites[i]
-        #                 coord_jx= tuple(a + b for a, b in zip(coord_j, (1,0)))
-        #                 if (coord_ix in site_set) and (coord_jx in site_set):
-        #                     i_x= self.lattice_sample.sites.index(coord_ix)
-        #                     j_x= self.lattice_sample.sites.index(coord_jx)
-    
-        #                     a=u[j,n]*u_c[i_x,n]*u[i,m]*u_c[j_x,m] - u_c[i_x,n]*v[j_x,n]*u[i,m]*v_c[j,m] - u[j_x,n]*u_c[i_x,n]*u[i,m]*u_c[j,m]\
-        #                                +u_c[i_x,n]*v[j,n]*u[i,m]*v_c[j_x,m] - u[j,n]*u_c[i,n]*u[i_x,m]*u_c[j_x,m]+ u_c[i,n]*v[j_x,n]*u[i_x,m]*v_c[j,m]\
-        #                                + u[j_x,n]*u_c[i,n]*u[i_x,m]*u_c[j,m] - u_c[i,n]*v[j,n]*u[i_x,m]*v_c[j_x,m]
-    
-        #                     b=u[j,n]*u_c[i_x,n]*v_c[i,m]*v[j_x,m] + u_c[i_x,n]*v[j_x,n]*v_c[i,m]*u[j,m] - u[j_x,n]*u_c[i_x,n]*v_c[i,m]*v[j,m]\
-        #                                -u_c[i_x,n]*v[j,n]*v_c[i,m]*u[j_x,m] - u[j,n]*u_c[i,n]*v_c[i_x,m]*v[j_x,m]- u_c[i,n]*v[j_x,n]*v_c[i_x,m]*u[j,m]\
-        #                                + u[j_x,n]*u_c[i,n]*v_c[i_x,m]*v[j,m] + u_c[i,n]*v[j,n]*v_c[i_x,m]*u[j_x,m]
-    
-        #                     c =v_c[j,n]*v[i_x,n]*u[i,m]*u_c[j_x,m] + v[i_x,n]*u_c[j_x,n]*u[i,m]*v_c[j,m] - v_c[j_x,n]*v[i_x,n]*u[i,m]*u_c[j,m]\
-        #                                -v[i_x,n]*u_c[j,n]*u[i,m]*v_c[j_x,m] - v_c[j,n]*v[i,n]*u[i_x,m]*u_c[j_x,m]- v[i,n]*u_c[j_x,n]*u[i_x,m]*v_c[j,m]\
-        #                                + v_c[j_x,n]*v[i,n]*u[i_x,m]*u_c[j,m] + v[i,n]*u_c[j,n]*u[i_x,m]*v_c[j_x,m]
-    
-        #                     d = v_c[j,n]*v[i_x,n]*v_c[i,m]*v[j_x,m] - v[i_x,n]*u_c[j_x,n]*v_c[i,m]*u[j,m] - v_c[j_x,n]*v[i_x,n]*v_c[i,m]*v[j,m]\
-        #                                +v[i_x,n]*u_c[j,n]*v_c[i,m]*u[j_x,m] - v_c[j,n]*v[i,n]*v_c[i_x,m]*v[j_x,m]+ v[i,n]*u_c[j_x,n]*v_c[i_x,m]*u[j,m]\
-        #                                + v_c[j_x,n]*v[i,n]*v_c[i_x,m]*v[j,m] - v[i,n]*u_c[j,n]*v_c[i_x,m]*u[j_x,m]
-    
-        #                     Lambda[:,i]+=self.hopping**2/self.N*np.exp(1j*q_y*(coord_i[1]-coord_j[1]))*((a+d)*(self.F(energies[n])-self.F(energies[m]))/(1j*10**(-6)+energies[n]-energies[m])
-        #                                                                 +(b+c)*(self.F(energies[n])+self.F(energies[m]))/(1j*10**(-6)+energies[n]+energies[m]))
-        
         return Lambda
         
     def local_stiffness(self, q_y):
@@ -476,7 +437,7 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
     
     N_qy=100
     k=np.linspace(0, 2*np.pi*(1-1/size), size)
-    q_y=np.linspace(2*np.pi/N_qy, 2*np.pi*(1-1/N_qy), N_qy)
+    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
     Lambda=np.zeros(N_qy)
     
     if state=='normal':
@@ -516,11 +477,17 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
                     E_qy=np.sqrt(eps_qy**2 + Delta**2)
                     L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
                     P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
-                    #print(np.round(L,4), np.round(P,4), E, E_qy)
                     Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))
                                                              +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
                     
-                    #Lambda[i]+=np.real(-8/(size**2)*(np.sin(k_x)**2)*(F(E,T)-F(E_qy,T))/(E-E_qy+1j*10**(-6)))
+                    E=-np.sqrt(eps**2 + Delta**2)
+                    E_qy=-np.sqrt(eps_qy**2 + Delta**2)
+                    L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
+                    P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
+                    Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))
+                                                             +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
+             
+                    
 
         return q_y, Lambda
     
@@ -571,14 +538,16 @@ def main():
 
     mode="square"
     t=1
-    size=9
-    T=1
-    V=0.0
-    mu=0
+    size=21
+    T=1/200
+    V=4.0
+    mu=0.0
     
-    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    BdG_sample=BdG(lattice_sample, V, T, mu)
-    #BdG_sample.BdG_cycle()
+    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    # BdG_sample=BdG(lattice_sample, V, T, mu)
+    # BdG_sample.BdG_cycle()
+
+    # print("density", np.mean(BdG_sample.charge_density()))
     # time1=time.time()
     # K=BdG_sample.local_kinetic_energy()
     # print("K", K)
@@ -592,18 +561,18 @@ def main():
     # Lambda=BdG_sample.twopoint_correlator(q_y)
     # print("lambda", Lambda)
     
-    N_qy=100
-    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
-    Lambda=[]
-    i=0
-    for q in q_y:
-        print("i", i, "q", q)
-        Lambda.append(BdG_sample.twopoint_correlator(q))
-        print("Lambda", Lambda[i])
-        i+=1
-    plt.plot(q_y, Lambda)
-    plt.savefig("lambda_numerical_test.png")
-    plt.close()
+    # N_qy=30
+    # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
+    # Lambda=[]
+    # i=0
+    # for q in q_y:
+    #     print("i", i, "q", q)
+    #     Lambda.append(BdG_sample.twopoint_correlator(q))
+    #     print("Lambda", Lambda[i])
+    #     i+=1
+    # plt.plot(q_y, Lambda)
+    # plt.savefig("lambda_numerical_test.png")
+    # plt.close()
     
     # BdG_sample.BdG_cycle()
     # print(BdG_sample.spectra)
@@ -611,10 +580,10 @@ def main():
     #print(spectra)
     
     
-    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0, state='normal')
+    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=1.38, state='super')
     # print("zero limit", Lambda[0])
     plt.plot(q_y, Lambda)
-    plt.savefig("lambda_test_normal.png")
+    plt.savefig("lambda_test_super.png")
     plt.close()
     
  

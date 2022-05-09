@@ -337,28 +337,11 @@ class BdG():
                 u_x[i,:]=u[i_x,:]
                 v_x[i,:]=v[i_x,:]
 
-
-        # uu_x=np.zeros((self.N,2*self.N,2*self.N))
-        # vv_x=np.zeros((self.N,2*self.N,2*self.N))
-        # for i in range(self.N): 
-        #     uu_x[i,...]=np.einsum(np.conj(u[i,:]), [1], u_x[i,:], [2], [1,2])
-        #     vv_x[i,...]=np.einsum(np.conj(v[i,:]), [1], v_x[i,:], [2], [1,2])
-        
-        #prepare fermi weight
-        
-        # F_weight_test=np.zeros((2*self.N,2*self.N))
-        # for i in range(2*self.N):
-        #     for j in range(2*self.N):
-        #         F_weight_test[i,j]=(self.F(self.spectra[i])-self.F(self.spectra[j]))/(self.spectra[i]-self.spectra[j]+1j*10**(-6))
-        
+     
         energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
         fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
-        F_weight=fermi_diff/energy_diff
-        
-        # print("F_test", np.max(np.abs(F_weight-F_weight_test)))
-        
-        
-
+        #normalization is here for a little better performance, 2 is from spin indices    
+        F_weight=2/self.N*fermi_diff/energy_diff 
 
         uu_x=np.einsum(exp_a, [0], np.conj(u_x), [0,1], u, [0,2], [1,2])
         uu_x_t=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
@@ -369,14 +352,11 @@ class BdG():
         A=uu_x-uu_x_t
         D=vv_x-vv_x_t
         
-        Lambda=-2/self.N*np.einsum(A, [0,1], np.conj(A)+D, [0,1], F_weight, [0,1])
+        #the index transposition is needed in the first term despite the formula from the book by Jian-Xin Zhu    
+        Lambda=np.einsum(A, [1,0], np.conj(A)+D, [0,1], F_weight, [0,1])
         
-        #test
-        # k=np.linspace(0, 2*np.pi*(1-1/self.size), self.size)
-        
-        # K_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
-
         return Lambda
+    
         
     def local_stiffness(self, q_y):
         
@@ -539,70 +519,27 @@ def main():
     mode="square"
     t=1
     size=21
-    T=1/200
-    V=4.0
+    T=1
+    V=0.0
     mu=0.0
     
-    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    # BdG_sample=BdG(lattice_sample, V, T, mu)
+    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    BdG_sample=BdG(lattice_sample, V, T, mu)
     # BdG_sample.BdG_cycle()
-
-    # print("density", np.mean(BdG_sample.charge_density()))
-    # time1=time.time()
-    # K=BdG_sample.local_kinetic_energy()
-    # print("K", K)
-    # print("mean K", np.mean(K))
-    # time2=time.time()
-    # print("kinenergy time", time2-time1)
-    #print("spectra", BdG_sample.spectra)
-    # print("kinetic energy time", time2-time1)
     
-    # q_y=2*np.pi/100
-    # Lambda=BdG_sample.twopoint_correlator(q_y)
-    # print("lambda", Lambda)
-    
-    # N_qy=30
-    # q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
-    # Lambda=[]
-    # i=0
-    # for q in q_y:
-    #     print("i", i, "q", q)
-    #     Lambda.append(BdG_sample.twopoint_correlator(q))
-    #     print("Lambda", Lambda[i])
-    #     i+=1
-    # plt.plot(q_y, Lambda)
-    # plt.savefig("lambda_numerical_test.png")
-    # plt.close()
-    
-    # BdG_sample.BdG_cycle()
-    # print(BdG_sample.spectra)
-    # spectra, vectors = eigh(lattice_sample.hamiltonian)
-    #print(spectra)
-    
-    
-    q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=1.38, state='super')
-    # print("zero limit", Lambda[0])
+    N_qy=30
+    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
+    Lambda=[]
+    Lambda_test=[]
+    i=0
+    for q in q_y:
+        print("i", i, "q", q)
+        Lambda.append(BdG_sample.twopoint_correlator(q))
+        i+=1
     plt.plot(q_y, Lambda)
-    plt.savefig("lambda_test_super.png")
+    plt.savefig("lambda_numerical.png")
     plt.close()
-    
- 
-    # q_y, Lambda=uniform_2D_correlation_function(size, T, Delta=0.0, state='super')
-    # print("zero limit", Lambda[0])
-    # plt.plot(q_y, Lambda)
-    # plt.savefig("lambda_test_super.png")
-    # plt.close()
-    
-    #n=BdG_sample.charge_density()
-    #print("charge density", np.sum(n)/len(lattice_sample.sites))
-    #K=BdG_sample.local_kinetic_energy()
-    #print("kinetic energy", np.sum(K)/len(lattice_sample.sites))
-    
-    # lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
-    # for v in [V]:
-    #     V=round(v,2)
-    #     T_array=np.linspace(0.01, 0.25, num=100)
-    #     T_diagram(lattice_sample, V, mu, T_array)
+
 
 
 

@@ -5,7 +5,6 @@ from scipy.sparse import diags
 from numpy import random
 import time
 import pickle
-from numba import jit
 
 
 
@@ -98,7 +97,6 @@ class Lattice():
                         del_array.append((x,y))
                         break
 
-        #print("del_array",del_array)
         for site in del_array:
             self.sites.remove(site)
 
@@ -106,16 +104,16 @@ class Lattice():
         H=np.zeros((N,N))
         test_site_set=set(self.sites)
         for n_site in range(N):
-            #print("n_site, n_coord", n_site, self.sites[n_site])
             for neigh_vec in self.neigh:
+                
                 if self.pbc:
                     neigh_coord = tuple((a + b)%(self.size) for a, b in zip(self.sites[n_site], neigh_vec))
                 else:
                     neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
-                #print("neigh_coord", neigh_coord)
+                    
                 if neigh_coord in test_site_set:
+                    
                     n_neigh = self.sites.index(neigh_coord)
-                    #print("n_neigh, neigh_coord", n_neigh, neigh_coord)
                     H[n_site,n_neigh]=-self.hopping
 
         self.hamiltonian = H
@@ -154,11 +152,9 @@ class Lattice():
                         diagdel = True
 
                     if xdel == True and ydel == True and diagdel==True:
-                        #print("total",x,y, "k=",k)
                         del_array.append((x,y))
                         break
 
-        #print("del_array",del_array)
         for site in del_array:
             self.sites.remove(site)
 
@@ -167,37 +163,28 @@ class Lattice():
 
         N = len(self.sites)
         H=np.zeros((N,N))
-        #print(self.sites)
         test_site_set=set(self.sites)
         l_min=2 ** (power - (self.fractal_iter + 1))#test for boundary coordinates
         print("l_min", l_min)
         for n_site in range(N):
-            #print("n_site, n_coord", n_site, self.sites[n_site])
-
             x=self.sites[n_site][0]
             y=self.sites[n_site][1]
-            #print("site", x,y)
             for neigh_vec in self.neigh:
                 if self.pbc:
                     neigh_coord = tuple((a + b)%(self.size) for a, b in zip(self.sites[n_site], neigh_vec))
                 else:
                     neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
 
-                #print("neigh_coord", neigh_coord)
-
                 if x%l_min==0 and y%l_min!=0 and (neigh_vec==(1,0) or neigh_vec==(1,1)):
-                    #print("xcheck", x,y)
                     continue
                 if y%l_min==0 and x%l_min!=0 and (neigh_vec==(0,-1) or neigh_vec==(-1,-1)):
-                    #print("ycheck", x,y)
                     continue
                 if (x-y)%l_min==0 and (y%l_min!=0 and x%l_min!=0) and (neigh_vec==(-1,0) or neigh_vec==(0,1)):
-                    #print("diagcheck", x,y)
                     continue
+                
                 if neigh_coord in test_site_set:
                     n_neigh = self.sites.index(neigh_coord)
                     "edge test"
-                    #print("n_neigh, neigh_coord", n_neigh, neigh_coord)
                     H[n_site,n_neigh]=-self.hopping
 
         self.hamiltonian = H
@@ -226,7 +213,7 @@ class Lattice():
         if len(self.dis_array)>0:
             for n in self.dis_array:
                 print("V_disorder site", self.sites[n], "n", n)
-                self.hamiltonian[n,n]=100
+                self.hamiltonian[n,n]=5
     
     
     #figure of a lattice
@@ -264,7 +251,6 @@ class BdG():
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
         self.vectors=vectors
-        #print("spectra", spectra)
 
 
     #Fermi function
@@ -290,7 +276,6 @@ class BdG():
             coord=self.lattice_sample.sites[i]
             if self.pbc:
                 coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
-                #print(coord, coord_x)
             else:
                 coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
             if coord_x in site_set:
@@ -305,12 +290,11 @@ class BdG():
 
         return K
 
-
     def twopoint_correlator(self, q_y):
+        #return local two-point correlation function, global value is the mean of loca ones
         
         print("correlator is being calculated")
         site_set=set(self.lattice_sample.sites)
-        # Lambda=np.zeros((len(q_y), self.N), dtype=complex)
         u=self.vectors[:self.N,:]
         v=self.vectors[self.N:,:]
         
@@ -318,6 +302,7 @@ class BdG():
         v_x=np.zeros((self.N,2*self.N))
         exp_a=np.zeros(self.N, dtype=complex)
         exp_d=np.zeros(self.N, dtype=complex)
+        Lambda=np.zeros(self.N, dtype=complex)
 
         
         #prepare translated eigenvectors
@@ -329,9 +314,9 @@ class BdG():
 
             if self.pbc:
                 coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
-                #print(coord, coord_x)
             else:
                 coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
+                
             if coord_x in site_set:
                 i_x=self.lattice_sample.sites.index(coord_x)
                 u_x[i,:]=u[i_x,:]
@@ -341,22 +326,29 @@ class BdG():
         energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
         fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
         #normalization is here for a little better performance, 2 is from spin indices    
-        F_weight=2/self.N*fermi_diff/energy_diff 
+        F_weight=2*fermi_diff/energy_diff 
+     
+        uu_x=np.einsum(exp_d, [0], u_x, [0,1], np.conj(u), [0,2], [1,2])   
+        uu_x_t=np.einsum(exp_d, [0], u, [0,1], np.conj(u_x), [0,2], [1,2])       
 
-        uu_x=np.einsum(exp_a, [0], np.conj(u_x), [0,1], u, [0,2], [1,2])
-        uu_x_t=np.einsum(exp_a, [0], np.conj(u), [0,1], u_x, [0,2], [1,2])
+        vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])  
+        vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])        
 
-        vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])
-        vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])
+        AD=uu_x-uu_x_t+vv_x-vv_x_t
         
-        A=uu_x-uu_x_t
-        D=vv_x-vv_x_t
+        #the index transposition is needed for a sign convention   
         
-        #the index transposition is needed in the first term despite the formula from the book by Jian-Xin Zhu    
-        Lambda=np.einsum(A, [1,0], np.conj(A)+D, [0,1], F_weight, [0,1])
+        for i in range(self.N):
+            print("site ", i, "out of", self.N)
+            
+            au_x=np.einsum(exp_a[i]*np.conj(u_x[i,:]), [0], u[i,:], [1], [0,1])
+            au_x_t=np.einsum(exp_a[i]*np.conj(u[i,:]), [0], u_x[i,:], [1], [0,1])
+
+            a=au_x-au_x_t
+            
+            Lambda[i]=np.einsum(a,[1,0],AD,[0,1],F_weight,[0,1])
         
         return Lambda
-    
         
     def local_stiffness(self, q_y):
         
@@ -372,7 +364,6 @@ class BdG():
     
     def charge_density(self):
         fermi_dist=self.F(self.spectra[self.N:])
-        #print(energies)
         v=self.vectors[self.N:,self.N:]
         u=self.vectors[:self.N,self.N:]
         n=2*np.einsum(u,[0,1],np.conj(u), [0,1],fermi_dist,[1],[0])+2*np.einsum(v,[0,1],np.conj(v), [0,1],np.ones(self.N)-fermi_dist,[1],[0])
@@ -382,6 +373,7 @@ class BdG():
     
     def BdG_cycle(self):
         
+        print("charge density, n", np.mean(self.charge_density()))
         print("BdG cycle T=", self.T)
         step=0
         if self.initial_Delta==False:
@@ -405,7 +397,26 @@ class BdG():
             self.spectra=spectra
             self.vectors=vectors
         
-        print("charge density, n", np.mean(self.charge_density()))
+        
+        
+    def field_plot(self, field, title=''):
+        
+        coord=self.lattice_sample.sites
+        x_coord = map(lambda x: x[0], coord)
+        y_coord = map(lambda x: x[1], coord)
+        x_coord=list(x_coord)
+        y_coord=list(y_coord)
+
+        cm = plt.cm.get_cmap('plasma')
+        fig, ax = plt.subplots()
+        sc=ax.scatter(x_coord, y_coord, s=10, c=field, cmap=cm)
+        fig.colorbar(sc)
+        ax.axis('off')
+        plt.title(title)
+        plt.show()
+        plt.savefig("field.png")
+        plt.close()
+        
 
 
 #Fermi function
@@ -427,7 +438,6 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
                 for k_y in k:
                     eps=-2*(np.cos(k_x)+np.cos(k_y))
                     eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
-                    #print(eps, eps_qy)
                     Lambda[i]+=np.real(-8/(size**2)*(np.sin(k_x)**2)*(F(eps,T)-F(eps_qy,T))/(eps-eps_qy+1j*10**(-6)))
             
         #kinetic energy from limit
@@ -437,7 +447,6 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
             for k_y in k:
                 
                 eps=-2*(np.cos(k_x)+np.cos(k_y))
-                # print('kx, ky, eps', np.round(k_x/np.pi, 2), np.round(k_y/np.pi, 2), np.round(eps,2))
                 K_simple+=4*np.cos(k_x)*F(eps,T)/(size**2)
                 K_withderivative+=8*(np.sin(k_x)**2)/(4*T*(size**2)*(np.cosh(eps/(2*T))**2))
 
@@ -497,7 +506,6 @@ def plot_T_diagram(T_diagram_obj):
     Delta_array=np.array(T_diagram_obj['Delta_array'])
     lattice_sample=T_diagram_obj['lattice_sample']
     
-    #print(Delta_array)
     Delta_av=np.zeros(Nt)
     for i in range(Nt):
         Delta_av[i]=np.mean(Delta_array[i,:])
@@ -518,28 +526,17 @@ def main():
 
     mode="square"
     t=1
-    size=21
+    size=23
     T=1
-    V=0.0
-    mu=0.0
+    V=0.8
+    mu=-0.285
     
     lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
     # BdG_sample.BdG_cycle()
-    
-    N_qy=30
-    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
-    Lambda=[]
-    Lambda_test=[]
-    i=0
-    for q in q_y:
-        print("i", i, "q", q)
-        Lambda.append(BdG_sample.twopoint_correlator(q))
-        i+=1
-    plt.plot(q_y, Lambda)
-    plt.savefig("lambda_numerical.png")
-    plt.close()
 
+    rho=BdG_sample.local_stiffness(2*6.141592/size)
+    BdG_sample.field_plot(rho)
 
 
 

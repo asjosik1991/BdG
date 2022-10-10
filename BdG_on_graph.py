@@ -49,19 +49,28 @@ class Lattice():
             for i in range(self.size):
                 for j in range(self.size):
                     self.sites.append((i,j))
-
+    
     def add_disorder(self):
-        N=len(self.sites)
-        delete_list=[]
-        for i in range(N):
-            x=random.random_sample()
-            if x>=(1-self.alpha):
-                delete_list.append(self.sites[i])
+        
+        if self.alpha>0:
+            N=len(self.sites)
+            delete_list=[]
+            for i in range(N):
+                x=random.random_sample()
+                if x>=(1-self.alpha):
+                    self.del_array.append(i)
 
-        print("delete_array", delete_list)
-        for site in delete_list:
-            self.sites.remove(site)
+        if len(self.del_array)>0:
+            self.del_array.sort(reverse=True)
+            print("del_sort", self.del_array)
+            for n in self.del_array:
+                print("holes disorder", self.sites[n], "n", n)
+                self.sites.remove(self.sites[n])
 
+        if len(self.dis_array)>0:
+            for n in self.dis_array:
+                print("V_disorder site", self.sites[n], "n", n)
+                self.hamiltonian[n,n]=5
 
     def Sierpinski_carpet(self):
         power=0
@@ -96,9 +105,10 @@ class Lattice():
                     if xdel == True and ydel == True:
                         del_array.append((x,y))
                         break
-
+                        
         for site in del_array:
             self.sites.remove(site)
+        self.add_disorder()
 
         N = len(self.sites)
         H=np.zeros((N,N))
@@ -155,11 +165,12 @@ class Lattice():
                         del_array.append((x,y))
                         break
 
+        
+             
         for site in del_array:
             self.sites.remove(site)
+        self.add_disorder()
 
-        if self.alpha>0:
-            self.add_disorder()
 
         N = len(self.sites)
         H=np.zeros((N,N))
@@ -199,21 +210,6 @@ class Lattice():
            
         if self.mode=="square":
            self.Sierpinski_carpet()
-           
-        if self.alpha>0:
-            self.add_disorder()
-
-        if len(self.del_array)>0:
-            self.del_array.sort(reverse=True)
-            print("del_sort", self.del_array)
-            for n in self.del_array:
-                print("holes disorder", self.sites[n], "n", n)
-                self.sites.remove(self.sites[n])
-
-        if len(self.dis_array)>0:
-            for n in self.dis_array:
-                print("V_disorder site", self.sites[n], "n", n)
-                self.hamiltonian[n,n]=5
     
     
     #figure of a lattice
@@ -291,7 +287,7 @@ class BdG():
         return K
 
     def twopoint_correlator(self, q_y):
-        #return local two-point correlation function, global value is the mean of loca ones
+        #return local two-point correlation function, global value is the mean of local ones
         
         print("correlator is being calculated")
         site_set=set(self.lattice_sample.sites)
@@ -359,6 +355,7 @@ class BdG():
 
     def construct_hamiltonian(self):
         H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
+        print(len(self.Delta), self.N)
         self.BdG_H = np.block([[self.lattice_H - self.mu*np.eye(self.N), H_Delta], [H_Delta, -self.lattice_H + self.mu*np.eye(self.N)]])
     
     
@@ -413,7 +410,6 @@ class BdG():
         fig.colorbar(sc)
         ax.axis('off')
         plt.title(title)
-        plt.show()
         plt.savefig("field.png")
         plt.close()
         
@@ -492,10 +488,16 @@ def T_diagram(lattice_sample, V, mu, T_array):
         Delta_array.append(BdG_sample.Delta)
     
     T_diagram_obj={'lattice_sample':lattice_sample, 'V':V, 'mu':mu, 'T_array':T_array, 'Delta_array':Delta_array}
-    filename="T_diagram_V={}_mode={}_fractiter={}.pickle".format(V, lattice_sample.mode, lattice_sample.fractal_iter)
+    filename="T_diagram_V={}_mode={}_fractiter={}_delholes={}.pickle".format(V, lattice_sample.mode, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
     pickle.dump(T_diagram_obj, file = open(filename, "wb"))
     plot_T_diagram(T_diagram_obj)
 
+
+def load_T_diagram(V, mode, fractal_iter, alpha):    
+    filename="T_diagram_V={}_mode={}_fractiter={}_delholes={}.pickle".format(V, mode, fractal_iter, round(alpha,2))
+    T_diagram_obj=pickle.load(file = open(filename, "rb"))
+    plot_T_diagram(T_diagram_obj)
+    
 
 #plot \Delta-T diagram for a given sample
 def plot_T_diagram(T_diagram_obj):
@@ -524,20 +526,24 @@ def plot_T_diagram(T_diagram_obj):
 
 def main():
 
-    mode="square"
+    mode="triangle"
     t=1
-    size=23
+    size=33
     T=1
-    V=0.8
-    mu=-0.285
+    V=2.0
+    mu=0
+    fractal_iter=1
+    alpha=0.1
     
-    lattice_sample = Lattice(t, mode, size, fractal_iter=0, pbc=True)
+    lattice_sample = Lattice(t, mode, size, alpha=alpha, fractal_iter=fractal_iter, pbc=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
     # BdG_sample.BdG_cycle()
 
     rho=BdG_sample.local_stiffness(2*6.141592/size)
-    BdG_sample.field_plot(rho)
+    print(rho)
+    BdG_sample.field_plot(np.real(rho))
 
+    #load_T_diagram(V, mode, fractal_iter, alpha)
 
 
 main()

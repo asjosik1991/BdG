@@ -10,12 +10,14 @@ import pickle
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class Lattice():
-    def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None, pbc=False):
+    def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None, pbc=True, noise=True):
 
         if mode=="triangle":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,-1)]
         if mode=="square":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1)]
+        if mode=="1dchain":
+            self.neigh=[(1,0),(-1,0)]
         self.size=size #linear size
         self.mode=mode
         self.pbc=pbc #periodic boundary conditions
@@ -23,10 +25,12 @@ class Lattice():
         self.hopping=hopping
         self.fractal_iter=fractal_iter
         self.alpha=alpha
+        self.noise=noise
         self.beta=beta
         self.hamiltonian=[]
         self.dis_array=[]
         self.del_array=[]
+        self.sites_number=0
         if dis_array==None:
             self.dis_array=[]
         else:
@@ -39,6 +43,10 @@ class Lattice():
         self.create_hamiltonian()
         
     def create_list_of_sites(self):
+        
+        if self.mode=="1dchain":
+            for i in range(self.size):
+                self.sites.append((i,0))
 
         if self.mode == "triangle":
             for i in range(self.size):
@@ -54,7 +62,6 @@ class Lattice():
         
         if self.alpha>0:
             N=len(self.sites)
-            delete_list=[]
             for i in range(N):
                 x=random.random_sample()
                 if x>=(1-self.alpha):
@@ -66,11 +73,21 @@ class Lattice():
             for n in self.del_array:
                 print("holes disorder", self.sites[n], "n", n)
                 self.sites.remove(self.sites[n])
+        
+        N = len(self.sites)
+        self.hamiltonian=np.zeros((N,N))
+        self.sites_number=N
 
         if len(self.dis_array)>0:
             for n in self.dis_array:
                 print("V_disorder site", self.sites[n], "n", n)
                 self.hamiltonian[n,n]=5
+        
+        #noise is important, because it regularize degenerate eigenvalues. otherwise, kinetic energy becomes incorrect for some hamiltonians
+        if self.noise:
+            for i in range(self.sites_number):
+                self.hamiltonian[i,i]=10**(-5)*(random.random_sample()-0.5)
+            
 
     def Sierpinski_carpet(self):
         power=0
@@ -86,7 +103,6 @@ class Lattice():
             print("the size is incompatible with fractal iterations")
             return
             
-        #print("power", power)
         del_array = []
         for x in range(self.size):
             for y in range(self.size):
@@ -110,10 +126,8 @@ class Lattice():
             self.sites.remove(site)
         self.add_disorder()
 
-        N = len(self.sites)
-        H=np.zeros((N,N))
         test_site_set=set(self.sites)
-        for n_site in range(N):
+        for n_site in range(self.sites_number):
             for neigh_vec in self.neigh:
                 
                 if self.pbc:
@@ -124,9 +138,8 @@ class Lattice():
                 if neigh_coord in test_site_set:
                     
                     n_neigh = self.sites.index(neigh_coord)
-                    H[n_site,n_neigh]=-self.hopping
+                    self.hamiltonian[n_site,n_neigh]=-self.hopping
 
-        self.hamiltonian = H
 
     def Sierpinski_gasket(self):
 
@@ -145,7 +158,6 @@ class Lattice():
         for x in range(self.size):
             for y in range(x+1):
                 for k in range(self.fractal_iter):
-                    #print("k",k)
                     xdel = False
                     ydel = False
                     diagdel=False
@@ -172,12 +184,10 @@ class Lattice():
         self.add_disorder()
 
 
-        N = len(self.sites)
-        H=np.zeros((N,N))
         test_site_set=set(self.sites)
         l_min=2 ** (power - (self.fractal_iter + 1))#test for boundary coordinates
         print("l_min", l_min)
-        for n_site in range(N):
+        for n_site in range(self.sites_number):
             x=self.sites[n_site][0]
             y=self.sites[n_site][1]
             for neigh_vec in self.neigh:
@@ -196,9 +206,27 @@ class Lattice():
                 if neigh_coord in test_site_set:
                     n_neigh = self.sites.index(neigh_coord)
                     "edge test"
-                    H[n_site,n_neigh]=-self.hopping
+                    self.hamiltonian[n_site,n_neigh]=-self.hopping
 
-        self.hamiltonian = H
+        
+    def onedchain(self):
+        
+        self.add_disorder()
+
+        test_site_set=set(self.sites)
+        for n_site in range(self.sites_number):
+            for neigh_vec in self.neigh:
+                
+                if self.pbc:
+                    neigh_coord = tuple((a + b)%(self.size) for a, b in zip(self.sites[n_site], neigh_vec))
+                else:
+                    neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))
+                    
+                if neigh_coord in test_site_set:
+                    
+                    n_neigh = self.sites.index(neigh_coord)
+                    self.hamiltonian[n_site,n_neigh]=-self.hopping
+
 
 
     def create_hamiltonian(self):
@@ -210,6 +238,9 @@ class Lattice():
            
         if self.mode=="square":
            self.Sierpinski_carpet()
+        
+        if self.mode=="1dchain":
+           self.onedchain()
     
     
     #figure of a lattice
@@ -238,6 +269,7 @@ class BdG():
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
             self.initial_Delta=False #it is necessary to obtain non-trivial solution of BdG equation
+            print("no initial Delta")
         else:
             self.Delta=Delta
             self.initial_Delta=True
@@ -253,19 +285,18 @@ class BdG():
     def F(self, E):
         return 1/(np.exp((E)/self.T)+1)
    
-    #@jit(nopython=True)
     def local_kinetic_energy(self):
         
         print("Kinetic energy is being calculated")
         
         site_set=set(self.lattice_sample.sites)
         K=np.zeros(self.N, dtype=complex)
-        u=self.vectors[:self.N,self.N:]
-        v=self.vectors[self.N:,self.N:]
-        energies=self.spectra[self.N:]
+        u=np.copy(self.vectors[:self.N,:])
+        v=np.copy(self.vectors[self.N:,:])
+        energies=self.spectra
         
-        u_x=np.zeros((self.N,self.N))
-        v_x=np.zeros((self.N,self.N))               
+        u_x=np.zeros((self.N,2*self.N))
+        v_x=np.zeros((self.N,2*self.N))               
         
         #prepare translated eigenvectors
         for i in range(self.N):
@@ -279,8 +310,8 @@ class BdG():
                 u_x[i,:]=u[i_x,:]
                 v_x[i,:]=v[i_x,:]
         
-        uu_x=2*self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
-        vv_x=2*self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
+        uu_x=self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
+        vv_x=self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
         
         K=np.einsum(uu_x,[0,1],self.F(energies),[1],[0])+np.einsum(vv_x,[0,1],self.F(-energies),[1],[0])
 
@@ -319,9 +350,9 @@ class BdG():
                 v_x[i,:]=v[i_x,:]
 
      
-        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+1j*10**(-6)
+        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+0.5*1j*10**(-3)
         fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
-        #normalization is here for a little better performance, 2 is from spin indices    
+        #normalization here is essential, otherwise there would be singularities. 2 is from spin indices    
         F_weight=2*fermi_diff/energy_diff 
      
         uu_x=np.einsum(exp_d, [0], u_x, [0,1], np.conj(u), [0,2], [1,2])   
@@ -355,7 +386,6 @@ class BdG():
 
     def construct_hamiltonian(self):
         H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
-        print(len(self.Delta), self.N)
         self.BdG_H = np.block([[self.lattice_H - self.mu*np.eye(self.N), H_Delta], [H_Delta, -self.lattice_H + self.mu*np.eye(self.N)]])
     
     
@@ -448,7 +478,7 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
 
         print("analytic kinetic energy", K_simple, "\n analytical limit", K_withderivative, "\n numerical limit", Lambda[0])
         
-        return q_y, Lambda
+        return q_y, Lambda, K_simple
     
     if state=='super':
         
@@ -526,24 +556,25 @@ def plot_T_diagram(T_diagram_obj):
 
 def main():
 
-    mode="triangle"
+    mode="square"
     t=1
-    size=33
-    T=1
-    V=2.0
-    mu=0
+    size=18
+    T=0.01
+    V=1.0
+    mu=0.0
     fractal_iter=1
-    alpha=0.1
+    alpha=0.0
     
-    lattice_sample = Lattice(t, mode, size, alpha=alpha, fractal_iter=fractal_iter, pbc=True)
+    lattice_sample = Lattice(t, mode, size, alpha=alpha, fractal_iter=fractal_iter, pbc=True, noise=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
-    # BdG_sample.BdG_cycle()
+    BdG_sample.BdG_cycle()
 
-    rho=BdG_sample.local_stiffness(2*6.141592/size)
-    print(rho)
-    BdG_sample.field_plot(np.real(rho))
+    rho=BdG_sample.local_stiffness(0)
+    print("rho", np.real(rho), "rho_av", np.mean(np.real(rho)))
+    BdG_sample.field_plot(np.real(np.round(rho,4)))
 
-    #load_T_diagram(V, mode, fractal_iter, alpha)
+
+         
 
 
 main()

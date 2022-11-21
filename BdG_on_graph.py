@@ -98,10 +98,10 @@ class Lattice():
             if size_check>0:
                 break                
             power+=1
-        
+        l=self.size//3**(power)#normalization factor for lengths not equal to powers of 3
+        print("power", power, "l", l)
         if power<self.fractal_iter:
-            print("the size is incompatible with fractal iterations")
-            return
+             print("the chozen fractal iterations and size don't correspond to exact fractal or number of iterations is too large")
             
         del_array = []
         for x in range(self.size):
@@ -110,11 +110,11 @@ class Lattice():
 
                     xdel = False
                     ydel = False
-
-                    xtest = (x // (3 ** (power - (k + 1)))) % 3
+                    
+                    xtest = (x// (l*3 ** (power - (k + 1)))) % 3
                     if xtest == 1:
                         xdel = True
-                    ytest = (y // (3 ** (power - (k + 1)))) % 3
+                    ytest = (y // (l*3 ** (power - (k + 1)))) % 3
                     if ytest == 1:
                         ydel = True
 
@@ -149,10 +149,17 @@ class Lattice():
             size_check=counter%2
             counter=counter//2
             if size_check>0:
-                print("size is incompatible with Sierpinski gasket")
-                return
+                break
             power+=1
-        print("maximum iteration number", power)
+        
+
+        l=(self.size-1)//2**(power-1)    
+        if l>1:
+            if power-1<self.fractal_iter:
+                print("the chozen fractal iterations and size don't correspond to exact fractal or number of iterations is too large")
+        if l==1:
+            if power-2<self.fractal_iter:
+                print("number of iterations is too large for the chosen size. the lattice will be calculated for the maximum number of fractal iterations")
 
         del_array=[]
         for x in range(self.size):
@@ -161,16 +168,16 @@ class Lattice():
                     xdel = False
                     ydel = False
                     diagdel=False
-                    xtest = (x // (2 ** (power - (k + 2)))) % 2
-                    if xtest == 1 and x%(2 ** (power - (k + 2)))>0:
+                    xtest = (x // (l*2 ** (power - (k + 2)))) % 2
+                    if xtest == 1 and x%(l*2 ** (power - (k + 2)))>0:
                         xdel = True
 
-                    ytest = ((2**(power-1)-y) // (2 ** (power - (k + 2)))) % 2
-                    if ytest == 1 and (2**(power-1)-y)%(2 ** (power - (k + 2)))>0:
+                    ytest = ((l*2**(power-1)-y) // (l*2 ** (power - (k + 2)))) % 2
+                    if ytest == 1 and (l*2**(power-1)-y)%(l*2 ** (power - (k + 2)))>0:
                         ydel = True
 
-                    diagtest= ((2**(power-1)-(x-y)) // (2 ** (power - (k + 2)))) % 2
-                    if diagtest == 1 and (2**(power-1)-(x-y))%(2 ** (power - (k + 2)))>0:
+                    diagtest= ((l*2**(power-1)-(x-y)) // (l*2 ** (power - (k + 2)))) % 2
+                    if diagtest == 1 and (l*2**(power-1)-(x-y))%(l*2 ** (power - (k + 2)))>0:
                         diagdel = True
 
                     if xdel == True and ydel == True and diagdel==True:
@@ -185,8 +192,8 @@ class Lattice():
 
 
         test_site_set=set(self.sites)
-        l_min=2 ** (power - (self.fractal_iter + 1))#test for boundary coordinates
-        print("l_min", l_min)
+        l_min=np.max([l*2 ** (power - (self.fractal_iter + 1)),l*2])#test for boundary coordinates, if fractal iterations are too large, it is fixed on its maximum value
+
         for n_site in range(self.sites_number):
             x=self.sites[n_site][0]
             y=self.sites[n_site][1]
@@ -200,6 +207,7 @@ class Lattice():
                     continue
                 if y%l_min==0 and x%l_min!=0 and (neigh_vec==(0,-1) or neigh_vec==(-1,-1)):
                     continue
+
                 if (x-y)%l_min==0 and (y%l_min!=0 and x%l_min!=0) and (neigh_vec==(-1,0) or neigh_vec==(0,1)):
                     continue
                 
@@ -269,7 +277,7 @@ class BdG():
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
             self.initial_Delta=False #it is necessary to obtain non-trivial solution of BdG equation
-            print("no initial Delta")
+            print("no initial Delta for the BdG Hamiltonian")
         else:
             self.Delta=Delta
             self.initial_Delta=True
@@ -440,6 +448,7 @@ class BdG():
         fig.colorbar(sc)
         ax.axis('off')
         plt.title(title)
+        plt.show()
         plt.savefig("field.png")
         plt.close()
         
@@ -556,20 +565,21 @@ def plot_T_diagram(T_diagram_obj):
 
 def main():
 
-    mode="square"
+    mode="triangle"
     t=1
-    size=18
-    T=0.01
-    V=1.0
+    size=17
+    T=0.1
+    V=2.0
     mu=0.0
-    fractal_iter=1
+    fractal_iter=3
     alpha=0.0
     
     lattice_sample = Lattice(t, mode, size, alpha=alpha, fractal_iter=fractal_iter, pbc=True, noise=True)
     BdG_sample=BdG(lattice_sample, V, T, mu)
-    BdG_sample.BdG_cycle()
+    #BdG_sample.BdG_cycle()
+    # print(lattice_sample.hamiltonian)
 
-    rho=BdG_sample.local_stiffness(0)
+    rho=BdG_sample.local_kinetic_energy()
     print("rho", np.real(rho), "rho_av", np.mean(np.real(rho)))
     BdG_sample.field_plot(np.real(np.round(rho,4)))
 

@@ -3,7 +3,6 @@ from scipy.linalg import eigh
 import matplotlib.pyplot as plt
 from scipy.sparse import diags
 from numpy import random
-import time
 import pickle
 
 
@@ -453,7 +452,7 @@ class BdG():
         plt.close()
         
 
-
+"Test functions for the homogeneous case"
 #Fermi function
 def F(epsilon,T):
     return 1/(np.exp(epsilon/T)+1)
@@ -511,11 +510,10 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
                     Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))
                                                              +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
              
-                    
-
-        return q_y, Lambda
+            return q_y, Lambda
     
-
+    
+"Calculations and plots for different parameters"
 #create \Delta-T diagram for a given sample
 def T_diagram(lattice_sample, V, mu, T_array):
     Delta_array=[]
@@ -563,28 +561,72 @@ def plot_T_diagram(T_diagram_obj):
     plt.close()
 
 
-def main():
-
-    mode="triangle"
-    t=1
-    size=17
-    T=0.1
-    V=2.0
-    mu=0.0
-    fractal_iter=3
-    alpha=0.0
+#create general array of Delta depending on different parameters for a given sample
+def calculate_diagram(lattice_sample, V_array, mu_array, T_array):
+    Delta_array=[]
+    for V in V_array:
+        for mu in mu_array:
+            for T in T_array:
+                BdG_sample=BdG(lattice_sample, V, T, mu)
+                BdG_sample.BdG_cycle()
+                Delta_array.append(BdG_sample.Delta)
     
-    lattice_sample = Lattice(t, mode, size, alpha=alpha, fractal_iter=fractal_iter, pbc=True, noise=True)
-    BdG_sample=BdG(lattice_sample, V, T, mu)
-    #BdG_sample.BdG_cycle()
-    # print(lattice_sample.hamiltonian)
+    diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Delta_array':Delta_array}
+    filename="diagram_mode={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
+    pickle.dump(diagram, file = open(filename, "wb"))
 
-    rho=BdG_sample.local_kinetic_energy()
-    print("rho", np.real(rho), "rho_av", np.mean(np.real(rho)))
-    BdG_sample.field_plot(np.real(np.round(rho,4)))
-
-
-         
+def load_diagram(lattice_sample):  
+    filename="diagram_mode={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
+    diagram=pickle.load(file = open(filename, "rb"))
+    return diagram
 
 
-main()
+#plot a diagram for a given sample
+def plot_diagram(diagram, plot_mode):
+    
+    if plot_mode=="T":
+        N=len(diagram['T'])
+        V=diagram['V'][0]
+        mu=diagram['mu'][0]
+        T_array=np.array(diagram['T'])
+        Delta_array=np.array(diagram['Delta_array'])
+        lattice_sample=diagram['lattice_sample']
+        
+        Delta_av=np.zeros(N)
+        for i in range(N):
+            Delta_av[i]=np.mean(Delta_array[i,:])
+            
+        plt.plot(T_array, Delta_av)
+    
+        title="V={} mu={} mode='{}' fractiter={}".format(V, mu, lattice_sample.mode, lattice_sample.fractal_iter)
+        plt.xlabel("T")
+        plt.ylabel(r'$<\Delta>$')
+        plt.title(title)
+    
+        figname="diagram_V={}_mu={}_mode={}_fractiter={}.png".format(V, mu,lattice_sample.mode, lattice_sample.fractal_iter)
+        plt.savefig(figname)
+        plt.close()
+    
+    if plot_mode=="mu":
+        
+        N=len(diagram['mu'])
+        V=diagram['V'][0]
+        T=diagram['T'][0]
+        mu_array=np.array(diagram['mu'])
+        Delta_array=np.array(diagram['Delta_array'])
+        lattice_sample=diagram['lattice_sample']
+        
+        Delta_av=np.zeros(N)
+        for i in range(N):
+            Delta_av[i]=np.mean(Delta_array[i,:])
+            
+        plt.plot(mu_array, Delta_av)
+    
+        title="T={} V={} mode='{}' fractiter={}".format(T,V, lattice_sample.mode, lattice_sample.fractal_iter)
+        plt.xlabel("T")
+        plt.ylabel(r'$<\Delta>$')
+        plt.title(title)
+    
+        figname="diagram_T={}_V={}_mode={}_fractiter={}.png".format(T,V, lattice_sample.mode, lattice_sample.fractal_iter)
+        plt.savefig(figname)
+        plt.close()

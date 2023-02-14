@@ -451,6 +451,13 @@ class BdG():
         plt.savefig("field.png")
         plt.close()
         
+    def plot_spectrum(self):
+        
+        plt.hist(self.spectra,bins=100)
+        plt.show()
+        plt.savefig("spectrum.png")
+        plt.close()
+        
 
 "Test functions for the homogeneous case"
 #Fermi function
@@ -567,16 +574,17 @@ def calculate_diagram(lattice_sample, V_array, mu_array, T_array):
     for V in V_array:
         for mu in mu_array:
             for T in T_array:
+                print("calculating T=",T,"mu=",mu,"V=",V)
                 BdG_sample=BdG(lattice_sample, V, T, mu)
                 BdG_sample.BdG_cycle()
                 Delta_array.append(BdG_sample.Delta)
     
     diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Delta_array':Delta_array}
-    filename="diagram_mode={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
+    filename="diagram_mode={}_size={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
     pickle.dump(diagram, file = open(filename, "wb"))
 
 def load_diagram(lattice_sample):  
-    filename="diagram_mode={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
+    filename="diagram_mode={}_size={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.size, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
     diagram=pickle.load(file = open(filename, "rb"))
     return diagram
 
@@ -598,12 +606,12 @@ def plot_diagram(diagram, plot_mode):
             
         plt.plot(T_array, Delta_av)
     
-        title="V={} mu={} mode='{}' fractiter={}".format(V, mu, lattice_sample.mode, lattice_sample.fractal_iter)
+        title="V={} mu={} mode='{}' size={} fractiter={}".format(V, mu, lattice_sample.mode, lattice_sample.size, lattice_sample.fractal_iter)
         plt.xlabel("T")
         plt.ylabel(r'$<\Delta>$')
         plt.title(title)
     
-        figname="diagram_V={}_mu={}_mode={}_fractiter={}.png".format(V, mu,lattice_sample.mode, lattice_sample.fractal_iter)
+        figname="diagram_V={}_mu={}_mode={}_size={}_fractiter={}.png".format(V, mu,lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
         plt.savefig(figname)
         plt.close()
     
@@ -622,11 +630,11 @@ def plot_diagram(diagram, plot_mode):
             
         plt.plot(mu_array, Delta_av)
     
-        title="T={} V={} mode='{}' fractiter={}".format(T,V, lattice_sample.mode, lattice_sample.fractal_iter)
-        plt.xlabel("T")
+        title="T={} V={} mode='{}' size={} fractiter={}".format(T,V, lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
+        plt.xlabel(r'$\mu$')
         plt.ylabel(r'$<\Delta>$')
         plt.title(title)
     
-        figname="diagram_T={}_V={}_mode={}_fractiter={}.png".format(T,V, lattice_sample.mode, lattice_sample.fractal_iter)
+        figname="diagram_T={}_V={}_mode={}_size={}_fractiter={}.png".format(T,V, lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
         plt.savefig(figname)
         plt.close()

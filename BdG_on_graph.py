@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.sparse import diags
 from numpy import random
 import pickle
+import time
 
 
 
@@ -418,8 +419,9 @@ class BdG():
             self.vectors=vectors
             
         while True:
+            F_weight=np.ones(self.N)-2*self.F(self.spectra[self.N:])
             vectors_up=self.V * np.conj(self.vectors[self.N:,self.N:])
-            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], np.ones(self.N)-2*self.F(self.spectra[self.N:]),[1],[0])
+            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], F_weight,[1],[0])
             error=np.max(np.abs((self.Delta-Delta_next)))
             self.Delta=Delta_next
             print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
@@ -430,6 +432,7 @@ class BdG():
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
+
         
         
         

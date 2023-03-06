@@ -521,7 +521,34 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
                                                              +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
              
             return q_y, Lambda
+
+
+def uniform_2D_BdG(size,mu,V,T):
+    print("Calculation of periodic square BdG")
+    k_array=np.linspace(0, 2*np.pi*(1-1/size), size)
+    energies_x=-2*np.cos(k_array)
+    energies_y=np.copy(energies_x)-mu*np.ones(size)
+    energies=np.transpose([np.tile(energies_x, size), np.repeat(energies_y, size)])
+    energies=np.sum(energies,axis=-1)
+    energies_sq=energies**2
+    Delta=0.1
+    step=0
+    V=0.5*V/size**2
+    while True:
+           E=np.sqrt(energies_sq+Delta**2)
+           aux_array=V*Delta*(np.ones(size**2)-2*F(E,T))/E
+           Delta_next=np.sum(aux_array)
+           error=np.abs(Delta-Delta_next)
+           Delta=Delta_next
+           print("step", step, "error", error, "Delta", Delta)
+           step += 1
+           if error<10**(-6):
+               break
+           
+    return Delta
     
+
+
     
 "Calculations and plots for different parameters"
 #create \Delta-T diagram for a given sample
@@ -593,7 +620,7 @@ def load_diagram(lattice_sample):
 
 
 #plot a diagram for a given sample
-def plot_diagram(diagram, plot_mode):
+def plot_diagram(diagram, plot_mode, show=False):
     
     if plot_mode=="T":
         N=len(diagram['T'])
@@ -616,6 +643,8 @@ def plot_diagram(diagram, plot_mode):
     
         figname="diagram_V={}_mu={}_mode={}_size={}_fractiter={}.png".format(V, mu,lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
         plt.savefig(figname)
+        if show:
+            plt.show()
         plt.close()
     
     if plot_mode=="mu":
@@ -640,4 +669,6 @@ def plot_diagram(diagram, plot_mode):
     
         figname="diagram_T={}_V={}_mode={}_size={}_fractiter={}.png".format(T,V, lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
         plt.savefig(figname)
+        if show:
+            plt.show()
         plt.close()

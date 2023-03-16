@@ -18,6 +18,9 @@ class Lattice():
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1)]
         if mode=="1dchain":
             self.neigh=[(1,0),(-1,0)]
+        if mode=="triangle_lattice":
+            self.neigh=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,-1)]
+
         self.size=size #linear size
         self.mode=mode
         self.pbc=pbc #periodic boundary conditions
@@ -57,7 +60,12 @@ class Lattice():
             for i in range(self.size):
                 for j in range(self.size):
                     self.sites.append((i,j))
-    
+        
+        if self.mode == "triangle_lattice":
+            for i in range(self.size):
+                for j in range(self.size):
+                    self.sites.append((i,j))
+
     def add_disorder(self):
         
         if self.alpha>0:
@@ -213,7 +221,6 @@ class Lattice():
                 
                 if neigh_coord in test_site_set:
                     n_neigh = self.sites.index(neigh_coord)
-                    "edge test"
                     self.hamiltonian[n_site,n_neigh]=-self.hopping
 
         
@@ -235,6 +242,20 @@ class Lattice():
                     n_neigh = self.sites.index(neigh_coord)
                     self.hamiltonian[n_site,n_neigh]=-self.hopping
 
+    def triangle_lattice(self):
+        self.add_disorder()
+        test_site_set=set(self.sites)
+        for n_site in range(self.sites_number):
+            x=self.sites[n_site][0]
+            y=self.sites[n_site][1]
+            for neigh_vec in self.neigh:
+                if self.pbc:
+                    neigh_coord = tuple((a + b)%(self.size) for a, b in zip(self.sites[n_site], neigh_vec))
+                else:
+                    neigh_coord = tuple(a + b for a, b in zip(self.sites[n_site], neigh_vec))                
+                if neigh_coord in test_site_set:
+                    n_neigh = self.sites.index(neigh_coord)
+                    self.hamiltonian[n_site,n_neigh]=-self.hopping
 
 
     def create_hamiltonian(self):
@@ -249,6 +270,9 @@ class Lattice():
         
         if self.mode=="1dchain":
            self.onedchain()
+
+        if self.mode=="triangle_lattice":
+           self.triangle_lattice()
     
     
     #figure of a lattice

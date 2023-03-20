@@ -547,13 +547,24 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
             return q_y, Lambda
 
 
-def uniform_2D_BdG(size,mu,V,T):
-    print("Calculation of periodic square BdG")
+def uniform_2D_BdG(size,V,T,mu,mode="square"):
+    print("Calculation of uniform periodic BdG")
     k_array=np.linspace(0, 2*np.pi*(1-1/size), size)
-    energies_x=-2*np.cos(k_array)
-    energies_y=np.copy(energies_x)-mu*np.ones(size)
-    energies=np.transpose([np.tile(energies_x, size), np.repeat(energies_y, size)])
-    energies=np.sum(energies,axis=-1)
+    #print("k_array", k_array)
+    if mode=="square":
+        energies_x=-2*np.cos(k_array)
+        energies_y=np.copy(energies_x)-mu*np.ones(size)
+        energies=np.transpose([np.tile(energies_x, size), np.repeat(energies_y, size)])
+        energies=np.sum(energies,axis=-1)
+    if mode=="triangle":
+        energies=np.zeros(size**2)
+        i=0
+        for k_x in k_array:
+            for k_y in k_array:
+                energies[i]=-2*(np.cos(k_x)+np.cos(k_y)+np.cos(k_x+k_y))-mu
+                i+=1
+        #print("triangle_energies", np.sort(energies)) 
+ 
     energies_sq=energies**2
     Delta=0.1
     step=0
@@ -570,8 +581,6 @@ def uniform_2D_BdG(size,mu,V,T):
                break
            
     return Delta
-    
-
 
     
 "Calculations and plots for different parameters"

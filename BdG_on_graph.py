@@ -1,11 +1,13 @@
 import numpy as np
 from scipy.linalg import eigh
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 from scipy.sparse import diags
 from numpy import random
 import pickle
 import time
-
+import matplotlib.colors as mcolors
 
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
@@ -68,7 +70,7 @@ class Lattice():
 
     def add_disorder(self):
         
-        if self.alpha>0:
+        if self.alpha>0 and len(self.del_array)==0:
             N=len(self.sites)
             for i in range(N):
                 x=random.random_sample()
@@ -436,7 +438,7 @@ class BdG():
         print("BdG cycle T=", self.T)
         step=0
         if self.initial_Delta==False:
-            self.Delta=0.1*np.ones(self.N)+0.1*np.random.rand(self.N)
+            self.Delta=0.5*np.ones(self.N)+0.1*np.random.rand(self.N)
             self.construct_hamiltonian()
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
@@ -457,25 +459,39 @@ class BdG():
             self.spectra=spectra
             self.vectors=vectors
 
-        
-        
-        
-    def field_plot(self, field, title=''):
+    def field_plot(self, field, fieldname='',title='', contrast=False):
         
         coord=self.lattice_sample.sites
         x_coord = map(lambda x: x[0], coord)
         y_coord = map(lambda x: x[1], coord)
         x_coord=list(x_coord)
         y_coord=list(y_coord)
+        viridis = cm.get_cmap('autumn', 256)
+        newcolors = viridis(np.linspace(0, 1, 256))
+        contrast_color = np.array(np.asarray(mcolors.to_rgb('blue')+(1,)))
+        print(mcolors.to_rgb('lime'))
+        newcolors[:1, :] =contrast_color
+        newcmp = ListedColormap(newcolors)
+        
+        if contrast:
+            field_copy = np.copy(field)
+            field_copy[np.abs(field_copy) <= 0.01] = 0
+            fig, ax = plt.subplots()
+            sc = ax.scatter(x_coord, y_coord, s=10, c=field_copy, cmap=newcmp)
+        else:
 
-        cm = plt.cm.get_cmap('plasma')
-        fig, ax = plt.subplots()
-        sc=ax.scatter(x_coord, y_coord, s=10, c=field, cmap=cm)
+            cmp = plt.cm.get_cmap('plasma')
+            fig, ax = plt.subplots()
+            sc=ax.scatter(x_coord, y_coord, s=10, c=field, cmap=cmp)
+
+        #plt.show()
+        cmax=np.max([0.04, np.max(field)])
+        sc.set_clim(0, cmax)
         fig.colorbar(sc)
         ax.axis('off')
         plt.title(title)
-        plt.show()
-        plt.savefig("field.png")
+        figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.png".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)
+        plt.savefig(figname)
         plt.close()
         
     def plot_spectrum(self):
@@ -484,224 +500,30 @@ class BdG():
         plt.show()
         plt.savefig("spectrum.png")
         plt.close()
-        
 
-"Test functions for the homogeneous case"
-#Fermi function
-def F(epsilon,T):
-    return 1/(np.exp(epsilon/T)+1)
-
-#analytical formula for uniform case, for tests
-def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
-    
-    N_qy=100
-    k=np.linspace(0, 2*np.pi*(1-1/size), size)
-    q_y=np.linspace(2*np.pi/size, 2*np.pi*(1-1/size), N_qy)
-    Lambda=np.zeros(N_qy)
-    
-    if state=='normal':
-        
-        for i in range(N_qy):
-            for k_x in k:
-                for k_y in k:
-                    eps=-2*(np.cos(k_x)+np.cos(k_y))
-                    eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
-                    Lambda[i]+=np.real(-8/(size**2)*(np.sin(k_x)**2)*(F(eps,T)-F(eps_qy,T))/(eps-eps_qy+1j*10**(-6)))
-            
-        #kinetic energy from limit
-        K_simple=0
-        K_withderivative=0
-        for k_x in k:
-            for k_y in k:
-                
-                eps=-2*(np.cos(k_x)+np.cos(k_y))
-                K_simple+=4*np.cos(k_x)*F(eps,T)/(size**2)
-                K_withderivative+=8*(np.sin(k_x)**2)/(4*T*(size**2)*(np.cosh(eps/(2*T))**2))
-
-        print("analytic kinetic energy", K_simple, "\n analytical limit", K_withderivative, "\n numerical limit", Lambda[0])
-        
-        return q_y, Lambda, K_simple
-    
-    if state=='super':
-        
-        for i in range(N_qy):
-            #print("q_y", q_y[i])
-            for k_x in k:
-                for k_y in k:
-                    eps=-2*(np.cos(k_x)+np.cos(k_y))
-                    eps_qy=-2*(np.cos(k_x)+np.cos(k_y+q_y[i]))
-                    E=np.sqrt(eps**2 + Delta**2)
-                    E_qy=np.sqrt(eps_qy**2 + Delta**2)
-                    L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
-                    P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
-                    Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))
-                                                             +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
-                    
-                    E=-np.sqrt(eps**2 + Delta**2)
-                    E_qy=-np.sqrt(eps_qy**2 + Delta**2)
-                    L=0.5*(1 + (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
-                    P=0.5*(1- (eps*eps_qy+Delta**2)/(E*E_qy+10**(-6)))
-                    Lambda[i]+=4/(size**2)*(np.sin(k_x)**2)*(L*(1/(1j*10**(-6)+E-E_qy)+1/(-1j*10**(-6)+E-E_qy)*(F(E,T)-F(E_qy,T)))
-                                                             +P*(1/(1j*10**(-6)+E+E_qy)+1/(-1j*10**(-6)+E+E_qy)*(1-F(E,T)-F(E_qy,T))))
-             
-            return q_y, Lambda
-
-
-def uniform_2D_BdG(size,V,T,mu,mode="square"):
-    print("Calculation of uniform periodic BdG")
-    k_array=np.linspace(0, 2*np.pi*(1-1/size), size)
-    #print("k_array", k_array)
-    if mode=="square":
-        energies_x=-2*np.cos(k_array)
-        energies_y=np.copy(energies_x)-mu*np.ones(size)
-        energies=np.transpose([np.tile(energies_x, size), np.repeat(energies_y, size)])
-        energies=np.sum(energies,axis=-1)
-    if mode=="triangle":
-        energies=np.zeros(size**2)
-        i=0
-        for k_x in k_array:
-            for k_y in k_array:
-                energies[i]=-2*(np.cos(k_x)+np.cos(k_y)+np.cos(k_x+k_y))-mu
-                i+=1
-        #print("triangle_energies", np.sort(energies)) 
- 
-    energies_sq=energies**2
-    Delta=0.1
-    step=0
-    V=0.5*V/size**2
-    while True:
-           E=np.sqrt(energies_sq+Delta**2)
-           aux_array=V*Delta*(np.ones(size**2)-2*F(E,T))/E
-           Delta_next=np.sum(aux_array)
-           error=np.abs(Delta-Delta_next)
-           Delta=Delta_next
-           print("step", step, "error", error, "Delta", Delta)
-           step += 1
-           if error<10**(-6):
-               break
-           
-    return Delta
-
-    
 "Calculations and plots for different parameters"
-#create \Delta-T diagram for a given sample
-def T_diagram(lattice_sample, V, mu, T_array):
-    Delta_array=[]
-    Delta_ini=[]
-    for T in T_array:
-        BdG_sample=BdG(lattice_sample, V, T, mu, Delta=Delta_ini)
-        BdG_sample.BdG_cycle()
-        Delta_ini=BdG_sample.Delta     
-        Delta_array.append(BdG_sample.Delta)
-    
-    T_diagram_obj={'lattice_sample':lattice_sample, 'V':V, 'mu':mu, 'T_array':T_array, 'Delta_array':Delta_array}
-    filename="T_diagram_V={}_mode={}_fractiter={}_delholes={}.pickle".format(V, lattice_sample.mode, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
-    pickle.dump(T_diagram_obj, file = open(filename, "wb"))
-    plot_T_diagram(T_diagram_obj)
-
-
-def load_T_diagram(V, mode, fractal_iter, alpha):    
-    filename="T_diagram_V={}_mode={}_fractiter={}_delholes={}.pickle".format(V, mode, fractal_iter, round(alpha,2))
-    T_diagram_obj=pickle.load(file = open(filename, "rb"))
-    plot_T_diagram(T_diagram_obj)
-    
-
-#plot \Delta-T diagram for a given sample
-def plot_T_diagram(T_diagram_obj):
-    
-    Nt=len(T_diagram_obj['T_array'])
-    V=T_diagram_obj['V']
-    T_array=np.array(T_diagram_obj['T_array'])
-    Delta_array=np.array(T_diagram_obj['Delta_array'])
-    lattice_sample=T_diagram_obj['lattice_sample']
-    
-    Delta_av=np.zeros(Nt)
-    for i in range(Nt):
-        Delta_av[i]=np.mean(Delta_array[i,:])
-        
-    plt.plot(T_array, Delta_av)
-
-    title="V={} mode='{}' fractiter={}".format(V, lattice_sample.mode, lattice_sample.fractal_iter)
-    plt.xlabel("T")
-    plt.ylabel(r'$<\Delta>$')
-    plt.title(title)
-
-    figname="T_diagram_V={}_mode={}_fractiter={}.png".format(V, lattice_sample.mode, lattice_sample.fractal_iter)
-    plt.savefig(figname)
-    plt.close()
-
 
 #create general array of Delta depending on different parameters for a given sample
 def calculate_diagram(lattice_sample, V_array, mu_array, T_array):
-    Delta_array=[]
+    Deltas={}
+    del_arrays={}
     for V in V_array:
-        for mu in mu_array:
-            for T in T_array:
+        for T in T_array:
+            for mu in mu_array:
                 print("calculating T=",T,"mu=",mu,"V=",V)
                 BdG_sample=BdG(lattice_sample, V, T, mu)
                 BdG_sample.BdG_cycle()
-                Delta_array.append(BdG_sample.Delta)
-    
-    diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Delta_array':Delta_array}
+                Deltas[(V,T,mu)]=BdG_sample.Delta
+                del_arrays[(V,T,mu)]=BdG_sample.lattice_sample.del_array
+
+    diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Deltas':Deltas, 'dels':del_arrays}
     filename="diagram_mode={}_size={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
     pickle.dump(diagram, file = open(filename, "wb"))
 
-def load_diagram(lattice_sample):  
-    filename="diagram_mode={}_size={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.size, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
-    diagram=pickle.load(file = open(filename, "rb"))
-    return diagram
-
-
-#plot a diagram for a given sample
-def plot_diagram(diagram, plot_mode, show=False):
-    
-    if plot_mode=="T":
-        N=len(diagram['T'])
-        V=diagram['V'][0]
-        mu=diagram['mu'][0]
-        T_array=np.array(diagram['T'])
-        Delta_array=np.array(diagram['Delta_array'])
-        lattice_sample=diagram['lattice_sample']
-        
-        Delta_av=np.zeros(N)
-        for i in range(N):
-            Delta_av[i]=np.mean(Delta_array[i,:])
-            
-        plt.plot(T_array, Delta_av)
-    
-        title="V={} mu={} mode='{}' size={} fractiter={}".format(V, mu, lattice_sample.mode, lattice_sample.size, lattice_sample.fractal_iter)
-        plt.xlabel("T")
-        plt.ylabel(r'$<\Delta>$')
-        plt.title(title)
-    
-        figname="diagram_V={}_mu={}_mode={}_size={}_fractiter={}.png".format(V, mu,lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
-        plt.savefig(figname)
-        if show:
-            plt.show()
-        plt.close()
-    
-    if plot_mode=="mu":
-        
-        N=len(diagram['mu'])
-        V=diagram['V'][0]
-        T=diagram['T'][0]
-        mu_array=np.array(diagram['mu'])
-        Delta_array=np.array(diagram['Delta_array'])
-        lattice_sample=diagram['lattice_sample']
-        
-        Delta_av=np.zeros(N)
-        for i in range(N):
-            Delta_av[i]=np.mean(Delta_array[i,:])
-            
-        plt.plot(mu_array, Delta_av)
-    
-        title="T={} V={} mode='{}' size={} fractiter={}".format(T,V, lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
-        plt.xlabel(r'$\mu$')
-        plt.ylabel(r'$<\Delta>$')
-        plt.title(title)
-    
-        figname="diagram_T={}_V={}_mode={}_size={}_fractiter={}.png".format(T,V, lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter)
-        plt.savefig(figname)
-        if show:
-            plt.show()
-        plt.close()
+def load_diagram(lattice_sample, suffix="diagram"):  
+    filename=suffix+"_mode={}_size={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.size, lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
+    try:
+        diagram=pickle.load(file = open(filename, "rb"))
+        return diagram
+    except (IOError, OSError, pickle.PickleError, pickle.UnpicklingError):
+        return -1

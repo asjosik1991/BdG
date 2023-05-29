@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.linalg import eigh
 import matplotlib.pyplot as plt
-from matplotlib import cm
+from matplotlib import cm, rc, ticker
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 from scipy.sparse import diags
 from numpy import random
@@ -318,7 +318,10 @@ class BdG():
     #Fermi function
     def F(self, E):
         return 1/(np.exp((E)/self.T)+1)
-   
+    
+    def dF(self, E):
+        return -1/(self.T*(np.exp(0.5*E/self.T)+np.exp(-0.5*E/self.T))**2)
+        
     def local_kinetic_energy(self):
         
         print("Kinetic energy is being calculated")
@@ -348,6 +351,7 @@ class BdG():
         vv_x=self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
         
         K=np.einsum(uu_x,[0,1],self.F(energies),[1],[0])+np.einsum(vv_x,[0,1],self.F(-energies),[1],[0])
+        print("average kinetic energy", np.mean(K))
 
         return K
 
@@ -384,11 +388,19 @@ class BdG():
                 v_x[i,:]=v[i_x,:]
 
      
-        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T+0.5*1j*10**(-3)
+        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T#+0.5*1j*10**(-6)
         fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
         #normalization here is essential, otherwise there would be singularities. 2 is from spin indices    
-        F_weight=2*fermi_diff/energy_diff 
-     
+        #F_weight=2*fermi_diff/energy_diff 
+        F_weight=np.zeros((2*self.N,2*self.N),dtype=complex)
+        for i in range(2*self.N):
+             for j in range(2*self.N):
+                if np.abs(self.spectra[i]-self.spectra[j])<10**(-10):
+                    #print("close eigenvalues", i,j,self.spectra[i], self.spectra[j])
+                    F_weight[i,j]=2*self.dF(self.spectra[i])
+                else:
+                    F_weight[i,j]=2*fermi_diff[i,j]/energy_diff[i,j]         
+      
         uu_x=np.einsum(exp_d, [0], u_x, [0,1], np.conj(u), [0,2], [1,2])   
         uu_x_t=np.einsum(exp_d, [0], u, [0,1], np.conj(u_x), [0,2], [1,2])       
 
@@ -460,34 +472,40 @@ class BdG():
             self.vectors=vectors
 
     def field_plot(self, field, fieldname='',title='', contrast=False):
-        
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+
+        rc('text', usetex=True)
+        rc('axes', titlesize=40)
+
+        print("plotting figure")
         coord=self.lattice_sample.sites
         x_coord = map(lambda x: x[0], coord)
         y_coord = map(lambda x: x[1], coord)
         x_coord=list(x_coord)
         y_coord=list(y_coord)
-        viridis = cm.get_cmap('autumn', 256)
+        viridis = cm.get_cmap('Blues', 256)
         newcolors = viridis(np.linspace(0, 1, 256))
-        contrast_color = np.array(np.asarray(mcolors.to_rgb('blue')+(1,)))
-        print(mcolors.to_rgb('lime'))
+        contrast_color = np.array(np.asarray(mcolors.to_rgb('springgreen')+(1,)))
         newcolors[:1, :] =contrast_color
         newcmp = ListedColormap(newcolors)
-        
+        fig, ax = plt.subplots(figsize=(12.8,9.6))
+
         if contrast:
             field_copy = np.copy(field)
-            field_copy[np.abs(field_copy) <= 0.01] = 0
-            fig, ax = plt.subplots()
-            sc = ax.scatter(x_coord, y_coord, s=10, c=field_copy, cmap=newcmp)
+            field_copy[field_copy <= 0.02] = 0
+            sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp)
+            cmax=np.max([0.04, np.mean(field)+1.2*np.std(field)])
+            sc.set_clim(0, cmax)
         else:
-
             cmp = plt.cm.get_cmap('plasma')
             fig, ax = plt.subplots()
-            sc=ax.scatter(x_coord, y_coord, s=10, c=field, cmap=cmp)
+            sc=ax.scatter(x_coord, y_coord, s=48, c=field, cmap=cmp)
 
-        #plt.show()
-        cmax=np.max([0.04, np.max(field)])
-        sc.set_clim(0, cmax)
-        fig.colorbar(sc)
+        cbar=fig.colorbar(sc)
+        cbar.ax.tick_params(labelsize=25)
+        tick_locator = ticker.MaxNLocator(nbins=5)
+        cbar.locator = tick_locator
+        cbar.update_ticks()
         ax.axis('off')
         plt.title(title)
         figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.png".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)

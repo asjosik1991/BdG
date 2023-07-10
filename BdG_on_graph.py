@@ -8,7 +8,7 @@ from numpy import random
 import pickle
 import time
 import matplotlib.colors as mcolors
-
+import networkx as nx
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class Lattice():
@@ -279,12 +279,14 @@ class Lattice():
     
     #figure of a lattice
     def show_graph(self):
+        
         pos=self.sites
-        plt.scatter(pos[:,0], pos[:,1], s=4)
-        plt.savefig("graph.png")
-        plt.close()
-
-
+        G = nx.from_numpy_matrix(np.abs(self.hamiltonian))
+        pos_dict={}
+        for i in range(self.sites_number):
+            pos_dict[i]=np.asarray(pos[i])
+        nx.draw(G,pos_dict)
+        plt.show()
 
 "Class for BdG hamiltonians and all corresponding functions"
 class BdG():
@@ -471,7 +473,14 @@ class BdG():
             self.spectra=spectra
             self.vectors=vectors
 
-    def field_plot(self, field, fieldname='',title='', contrast=False):
+    def field_plot(self, field, fieldname='',title='', edges=False,contrast=False):
+        
+        def connectpoints(p1,p2):
+            x1,x2=p1[0],p2[0]
+            y1,y2=p1[1],p2[1]
+            plt.plot([x1,x2],[y1,y2],color='grey',zorder=0)
+
+
         plt.rc('font', family = 'serif', serif = 'cmr10')
 
         rc('text', usetex=True)
@@ -485,22 +494,31 @@ class BdG():
         y_coord=list(y_coord)
         viridis = cm.get_cmap('Blues', 256)
         newcolors = viridis(np.linspace(0, 1, 256))
-        contrast_color = np.array(np.asarray(mcolors.to_rgb('springgreen')+(1,)))
+        contrast_color = np.array(np.asarray(mcolors.to_rgb('crimson')+(1,)))
         newcolors[:1, :] =contrast_color
         newcmp = ListedColormap(newcolors)
         fig, ax = plt.subplots(figsize=(12.8,9.6))
+        
+        if edges:
+            for point in self.lattice_sample.sites:
+                for neigh_vec in self.lattice_sample.neigh:
+                    neigh_point = tuple(a + b for a, b in zip(point, neigh_vec))
+                    if neigh_point in self.lattice_sample.sites and self.lattice_sample.hamiltonian[self.lattice_sample.sites.index(point),self.lattice_sample.sites.index(neigh_point)]!=0:
+                        connectpoints(point,neigh_point)
 
         if contrast:
             field_copy = np.copy(field)
-            field_copy[field_copy <= 0.02] = 0
-            sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp)
+            field_copy[field_copy <= 0.01] = 0
+            sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp, zorder=1)
             cmax=np.max([0.04, np.mean(field)+1.2*np.std(field)])
             sc.set_clim(0, cmax)
         else:
             cmp = plt.cm.get_cmap('plasma')
             fig, ax = plt.subplots()
             sc=ax.scatter(x_coord, y_coord, s=48, c=field, cmap=cmp)
+        
 
+        
         cbar=fig.colorbar(sc)
         cbar.ax.tick_params(labelsize=25)
         tick_locator = ticker.MaxNLocator(nbins=5)
@@ -508,7 +526,7 @@ class BdG():
         cbar.update_ticks()
         ax.axis('off')
         plt.title(title)
-        figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.png".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)
+        figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)
         plt.savefig(figname)
         plt.close()
         

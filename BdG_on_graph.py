@@ -301,6 +301,7 @@ class BdG():
         self.T=T
         self.mu=mu
         self.BdG_H=[]
+        self.right_neighs=list(set([(1,0),(1,1)]) & set(self.lattice_sample.neigh))
         
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
@@ -323,7 +324,7 @@ class BdG():
     
     def dF(self, E):
         return -1/(self.T*(np.exp(0.5*E/self.T)+np.exp(-0.5*E/self.T))**2)
-        
+    
     def local_kinetic_energy(self):
         
         print("Kinetic energy is being calculated")
@@ -334,27 +335,29 @@ class BdG():
         v=np.copy(self.vectors[self.N:,:])
         energies=self.spectra
         
-        u_x=np.zeros((self.N,2*self.N))
-        v_x=np.zeros((self.N,2*self.N))               
-        
+        K=0
         #prepare translated eigenvectors
-        for i in range(self.N):
-            coord=self.lattice_sample.sites[i]
-            if self.pbc:
-                coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
-            else:
-                coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
-            if coord_x in site_set:
-                i_x=self.lattice_sample.sites.index(coord_x)
-                u_x[i,:]=u[i_x,:]
-                v_x[i,:]=v[i_x,:]
+        for neighs in self.right_neighs:
+            u_x=np.zeros((self.N,2*self.N))
+            v_x=np.zeros((self.N,2*self.N))      
+            for i in range(self.N):
+                coord=self.lattice_sample.sites[i]
+                if self.pbc:
+                    coord_x= tuple((a + b)%self.size for a, b in zip(coord, neighs))
+                else:
+                    coord_x= tuple(a + b for a, b in zip(coord, neighs))
+                if coord_x in site_set:
+                    i_x=self.lattice_sample.sites.index(coord_x)
+                    if np.abs(self.lattice_H[i,i_x])>0.01:
+                        u_x[i,:]=u[i_x,:]
+                        v_x[i,:]=v[i_x,:]
         
-        uu_x=self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
-        vv_x=self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
+            uu_x=self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
+            vv_x=self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
         
-        K=np.einsum(uu_x,[0,1],self.F(energies),[1],[0])+np.einsum(vv_x,[0,1],self.F(-energies),[1],[0])
+            K+=np.einsum(uu_x,[0,1],self.F(energies),[1],[0])+np.einsum(vv_x,[0,1],self.F(-energies),[1],[0])
+        
         print("average kinetic energy", np.mean(K))
-
         return K
 
     def twopoint_correlator(self, q_y):
@@ -365,73 +368,84 @@ class BdG():
         u=self.vectors[:self.N,:]
         v=self.vectors[self.N:,:]
         
-        u_x=np.zeros((self.N,2*self.N))
-        v_x=np.zeros((self.N,2*self.N))
+
         exp_a=np.zeros(self.N, dtype=complex)
         exp_d=np.zeros(self.N, dtype=complex)
         Lambda=np.zeros(self.N, dtype=complex)
 
-        
-        #prepare translated eigenvectors
-        for i in range(self.N):
-            coord=self.lattice_sample.sites[i]
-            
-            exp_a[i]=np.exp(-1j*q_y*coord[1])
-            exp_d[i]=np.exp(1j*q_y*coord[1])
-
-            if self.pbc:
-                coord_x= tuple((a + b)%self.size for a, b in zip(coord, (1,0)))
-            else:
-                coord_x= tuple(a + b for a, b in zip(coord, (1,0)))
-                
-            if coord_x in site_set:
-                i_x=self.lattice_sample.sites.index(coord_x)
-                u_x[i,:]=u[i_x,:]
-                v_x[i,:]=v[i_x,:]
-
-     
-        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T#+0.5*1j*10**(-6)
+        energy_diff= np.tile(self.spectra, (2*self.N,1)) - np.tile(self.spectra, (2*self.N,1)).T
         fermi_diff= np.tile(self.F(self.spectra), (2*self.N,1)) - np.tile(self.F(self.spectra), (2*self.N,1)).T
-        #normalization here is essential, otherwise there would be singularities. 2 is from spin indices    
-        #F_weight=2*fermi_diff/energy_diff 
-        F_weight=np.zeros((2*self.N,2*self.N),dtype=complex)
+        F_weight=np.zeros((2*self.N,2*self.N),dtype=complex) #2 is from spin indices    
         for i in range(2*self.N):
              for j in range(2*self.N):
                 if np.abs(self.spectra[i]-self.spectra[j])<10**(-10):
-                    #print("close eigenvalues", i,j,self.spectra[i], self.spectra[j])
                     F_weight[i,j]=2*self.dF(self.spectra[i])
                 else:
                     F_weight[i,j]=2*fermi_diff[i,j]/energy_diff[i,j]         
-      
-        uu_x=np.einsum(exp_d, [0], u_x, [0,1], np.conj(u), [0,2], [1,2])   
-        uu_x_t=np.einsum(exp_d, [0], u, [0,1], np.conj(u_x), [0,2], [1,2])       
-
-        vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])  
-        vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])        
-
-        AD=uu_x-uu_x_t+vv_x-vv_x_t
         
-        #the index transposition is needed for a sign convention   
+        AD=0
+        #prepare translated eigenvectors
+        for neighs in self.right_neighs:
+
+            u_x=np.zeros((self.N,2*self.N))
+            v_x=np.zeros((self.N,2*self.N))
+            for i in range(self.N):
+                coord=self.lattice_sample.sites[i]
+            
+                exp_a[i]=np.exp(-1j*q_y*coord[1])
+                exp_d[i]=np.exp(1j*q_y*coord[1])
+
+                if self.pbc:
+                    coord_x= tuple((a + b)%self.size for a, b in zip(coord, neighs))
+                else:
+                    coord_x= tuple(a + b for a, b in zip(coord, neighs))
+                
+                if coord_x in site_set:
+                    i_x=self.lattice_sample.sites.index(coord_x)
+                    if np.abs(self.lattice_H[i,i_x])>0.01:
+                        u_x[i,:]=u[i_x,:]
+                        v_x[i,:]=v[i_x,:]
+
+            uu_x=np.einsum(exp_d, [0], u_x, [0,1], np.conj(u), [0,2], [1,2])   
+            uu_x_t=np.einsum(exp_d, [0], u, [0,1], np.conj(u_x), [0,2], [1,2])       
+
+            vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])  
+            vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])        
+
+            AD+=uu_x-uu_x_t+vv_x-vv_x_t
         
         for i in range(self.N):
+            a=0
             print("site ", i, "out of", self.N)
-            
-            au_x=np.einsum(exp_a[i]*np.conj(u_x[i,:]), [0], u[i,:], [1], [0,1])
-            au_x_t=np.einsum(exp_a[i]*np.conj(u[i,:]), [0], u_x[i,:], [1], [0,1])
+            for neighs in self.right_neighs:
+                u_x=np.zeros((self.N,2*self.N))
+                v_x=np.zeros((self.N,2*self.N))
+                for j in range(self.N):
+                    coord=self.lattice_sample.sites[j]
+                    if self.pbc:
+                        coord_x= tuple((a + b)%self.size for a, b in zip(coord, neighs))
+                    else:
+                        coord_x= tuple(a + b for a, b in zip(coord, neighs))
+                    if coord_x in site_set:
+                        j_x=self.lattice_sample.sites.index(coord_x)
+                        if np.abs(self.lattice_H[j,j_x])>0.01:
+                            u_x[j,:]=u[j_x,:]
+                            v_x[j,:]=v[j_x,:]
 
-            a=au_x-au_x_t
+                au_x=np.einsum(exp_a[i]*np.conj(u_x[i,:]), [0], u[i,:], [1], [0,1])
+                au_x_t=np.einsum(exp_a[i]*np.conj(u[i,:]), [0], u_x[i,:], [1], [0,1])
+                a+=au_x-au_x_t
             
             Lambda[i]=np.einsum(a,[1,0],AD,[0,1],F_weight,[0,1])
         
         return Lambda
-        
+    
     def local_stiffness(self, q_y):
         
         K=self.local_kinetic_energy()
         Lambda=self.twopoint_correlator(q_y)
         return K-Lambda
-
-
+    
     def construct_hamiltonian(self):
         H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
         self.BdG_H = np.block([[self.lattice_H - self.mu*np.eye(self.N), H_Delta], [H_Delta, -self.lattice_H + self.mu*np.eye(self.N)]])
@@ -472,8 +486,9 @@ class BdG():
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
-
-    def field_plot(self, field, fieldname='',title='', edges=False,contrast=False):
+    
+    #plot a field defined on a lattice (such as order parameter or superfluid density)
+    def field_plot(self, field, fieldname='',title='', edges=False,contrast=False, removeisols=True):
         
         def connectpoints(p1,p2):
             x1,x2=p1[0],p2[0]
@@ -506,12 +521,29 @@ class BdG():
                     if neigh_point in self.lattice_sample.sites and self.lattice_sample.hamiltonian[self.lattice_sample.sites.index(point),self.lattice_sample.sites.index(neigh_point)]!=0:
                         connectpoints(point,neigh_point)
 
+        if removeisols:
+            isols_inds=[]
+            for point in self.lattice_sample.sites:
+                check=False
+                for neigh_vec in self.lattice_sample.neigh:
+                    neigh_point = tuple(a + b for a, b in zip(point, neigh_vec))
+                    if neigh_point in self.lattice_sample.sites and self.lattice_sample.hamiltonian[self.lattice_sample.sites.index(point),self.lattice_sample.sites.index(neigh_point)]!=0:
+                        check=True
+                if check==False:
+                    isols_inds.append(self.lattice_sample.sites.index(point))
+            #print("isolated indices", isols_inds)
+            for index in sorted(isols_inds, reverse=True):
+                #print(index)
+                field=np.delete(field, index)
+                del x_coord[index]
+                del y_coord[index]
+
         if contrast:
             field_copy = np.copy(field)
-            field_copy[field_copy <= 0.01] = 0
+            field_copy[field_copy <= 0.01] = 0.01
             sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp, zorder=1)
-            cmax=np.max([0.04, np.mean(field)+1.2*np.std(field)])
-            sc.set_clim(0, cmax)
+            #cmax=np.max([0.04, np.mean(field)+1.2*np.std(field)])
+            #sc.set_clim(0, cmax)
         else:
             cmp = plt.cm.get_cmap('plasma')
             fig, ax = plt.subplots()
@@ -520,16 +552,19 @@ class BdG():
 
         
         cbar=fig.colorbar(sc)
-        cbar.ax.tick_params(labelsize=25)
-        tick_locator = ticker.MaxNLocator(nbins=5)
+        cbar.ax.tick_params(labelsize=40)
+        tick_locator = ticker.MaxNLocator(nbins=4)
         cbar.locator = tick_locator
+        cbar.set_label(title, fontsize=48, rotation=0, labelpad=-35, y=1.1)
         cbar.update_ticks()
+        #cbar.ax.set_title(title,fontsize=28)
         ax.axis('off')
-        plt.title(title)
+        #plt.title(title)
         figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)
         plt.savefig(figname)
         plt.close()
         
+
     def plot_spectrum(self):
         
         plt.hist(self.spectra,bins=100)
@@ -537,16 +572,16 @@ class BdG():
         plt.savefig("spectrum.png")
         plt.close()
 
-"Calculations and plots for different parameters"
+"Calculations for different parameters"
 
 #create general array of Delta depending on different parameters for a given sample
 def calculate_diagram(lattice_sample, V_array, mu_array, T_array):
     Deltas={}
     del_arrays={}
     for V in V_array:
-        for T in T_array:
-            for mu in mu_array:
-                print("calculating T=",T,"mu=",mu,"V=",V)
+        for mu in mu_array:
+            for T in T_array:
+                print("calculating V=",V,"mu=",mu,"T=",T)
                 BdG_sample=BdG(lattice_sample, V, T, mu)
                 BdG_sample.BdG_cycle()
                 Deltas[(V,T,mu)]=BdG_sample.Delta

@@ -317,7 +317,7 @@ class BdG():
         self.T=T
         self.mu=mu
         self.BdG_H=[]
-        if lattice_sample.mode=="triangle":
+        if lattice_sample.mode!="regular_triangle":
             self.right_neighs=list(set([(1,0),(1,1)]) & set(self.lattice_sample.neigh))
         if lattice_sample.mode=="regular_triangle":
             a=0.5

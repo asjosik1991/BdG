@@ -14,7 +14,7 @@ import networkx as nx
 class Lattice():
     def __init__(self,hopping,mode, size ,fractal_iter=0, alpha=0, beta=0, dis_array=None, del_array=None, pbc=True, noise=True):
 
-        if mode=="triangle":
+        if mode=="triangle" or "regular_triangle":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,-1)]
         if mode=="square":
             self.neigh=[(1,0),(-1,0),(0,1),(0,-1)]
@@ -53,7 +53,7 @@ class Lattice():
             for i in range(self.size):
                 self.sites.append((i,0))
 
-        if self.mode == "triangle":
+        if self.mode == "triangle" or "regular_triangle":
             for i in range(self.size):
                 for j in range(i+1):
                     self.sites.append((i,j))
@@ -260,6 +260,18 @@ class Lattice():
                     self.hamiltonian[n_site,n_neigh]=-self.hopping
 
 
+    def triangle_transform_coordinates(self):
+        a=0.5
+        b=np.round(0.5*np.sqrt(3),4)
+        #b=2
+        self.neigh=[(1,0),(-1,0),(a,b),(-a,b),(a,-b),(-a,-b)]
+        new_sites=[]
+        for i in range(len(self.sites)):
+            x=self.sites[i][0]
+            y=self.sites[i][1]
+            new_sites.append((np.round(a*y+(x-y),4),np.round(y*b,4)))
+        self.sites=new_sites
+
     def create_hamiltonian(self):
 
         self.create_list_of_sites()
@@ -275,6 +287,10 @@ class Lattice():
 
         if self.mode=="triangle_lattice":
            self.triangle_lattice()
+        
+        if self.mode=="regular_triangle":
+           self.Sierpinski_gasket()
+           self.triangle_transform_coordinates()
     
     
     #figure of a lattice
@@ -301,7 +317,13 @@ class BdG():
         self.T=T
         self.mu=mu
         self.BdG_H=[]
-        self.right_neighs=list(set([(1,0),(1,1)]) & set(self.lattice_sample.neigh))
+        if lattice_sample.mode=="triangle":
+            self.right_neighs=list(set([(1,0),(1,1)]) & set(self.lattice_sample.neigh))
+        if lattice_sample.mode=="regular_triangle":
+            a=0.5
+            b=np.round(0.5*np.sqrt(3),4)
+            self.right_neighs=[(1,0),(a,b),(a,-b)]
+            
         
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
@@ -345,15 +367,15 @@ class BdG():
                 if self.pbc:
                     coord_x= tuple((a + b)%self.size for a, b in zip(coord, neighs))
                 else:
-                    coord_x= tuple(a + b for a, b in zip(coord, neighs))
+                    coord_x= tuple(np.round(a + b,4) for a, b in zip(coord, neighs))
                 if coord_x in site_set:
                     i_x=self.lattice_sample.sites.index(coord_x)
                     if np.abs(self.lattice_H[i,i_x])>0.01:
                         u_x[i,:]=u[i_x,:]
                         v_x[i,:]=v[i_x,:]
-        
-            uu_x=self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
-            vv_x=self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
+            dx2=neighs[0]**2
+            uu_x=dx2*self.hopping*(u*np.conj(u_x)+np.conj(u)*u_x)
+            vv_x=dx2*self.hopping*(v*np.conj(v_x)+np.conj(v)*v_x)
         
             K+=np.einsum(uu_x,[0,1],self.F(energies),[1],[0])+np.einsum(vv_x,[0,1],self.F(-energies),[1],[0])
         
@@ -398,21 +420,21 @@ class BdG():
                 if self.pbc:
                     coord_x= tuple((a + b)%self.size for a, b in zip(coord, neighs))
                 else:
-                    coord_x= tuple(a + b for a, b in zip(coord, neighs))
+                    coord_x= tuple(np.round(a + b,4) for a, b in zip(coord, neighs))
                 
                 if coord_x in site_set:
                     i_x=self.lattice_sample.sites.index(coord_x)
                     if np.abs(self.lattice_H[i,i_x])>0.01:
                         u_x[i,:]=u[i_x,:]
                         v_x[i,:]=v[i_x,:]
-
+            dx=neighs[0]
             uu_x=np.einsum(exp_d, [0], u_x, [0,1], np.conj(u), [0,2], [1,2])   
             uu_x_t=np.einsum(exp_d, [0], u, [0,1], np.conj(u_x), [0,2], [1,2])       
 
             vv_x=np.einsum(exp_d, [0], v_x, [0,1], np.conj(v), [0,2], [1,2])  
             vv_x_t=np.einsum(exp_d, [0], v, [0,1], np.conj(v_x), [0,2], [1,2])        
 
-            AD+=uu_x-uu_x_t+vv_x-vv_x_t
+            AD+=dx*(uu_x-uu_x_t+vv_x-vv_x_t)
         
         for i in range(self.N):
             a=0
@@ -425,16 +447,16 @@ class BdG():
                     if self.pbc:
                         coord_x= tuple((a + b)%self.size for a, b in zip(coord, neighs))
                     else:
-                        coord_x= tuple(a + b for a, b in zip(coord, neighs))
+                        coord_x= tuple(np.round(a + b,4) for a, b in zip(coord, neighs))
                     if coord_x in site_set:
                         j_x=self.lattice_sample.sites.index(coord_x)
                         if np.abs(self.lattice_H[j,j_x])>0.01:
                             u_x[j,:]=u[j_x,:]
                             v_x[j,:]=v[j_x,:]
-
+                dx=neighs[0]
                 au_x=np.einsum(exp_a[i]*np.conj(u_x[i,:]), [0], u[i,:], [1], [0,1])
                 au_x_t=np.einsum(exp_a[i]*np.conj(u[i,:]), [0], u_x[i,:], [1], [0,1])
-                a+=au_x-au_x_t
+                a+=dx*(au_x-au_x_t)
             
             Lambda[i]=np.einsum(a,[1,0],AD,[0,1],F_weight,[0,1])
         
@@ -517,7 +539,7 @@ class BdG():
         if edges:
             for point in self.lattice_sample.sites:
                 for neigh_vec in self.lattice_sample.neigh:
-                    neigh_point = tuple(a + b for a, b in zip(point, neigh_vec))
+                    neigh_point = tuple(np.round(a + b,4) for a, b in zip(point, neigh_vec))
                     if neigh_point in self.lattice_sample.sites and self.lattice_sample.hamiltonian[self.lattice_sample.sites.index(point),self.lattice_sample.sites.index(neigh_point)]!=0:
                         connectpoints(point,neigh_point)
 

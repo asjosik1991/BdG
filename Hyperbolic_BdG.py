@@ -9,6 +9,7 @@ import pickle
 import time
 import matplotlib.colors as mcolors
 import networkx as nx
+import math
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
@@ -18,25 +19,26 @@ class HyperLattice:
         self.l=l
         self.hopping=hopping
         self.sites=np.array([])
-        self.hamiltonian=np.zeros((N, N), dtype = int)
+        self.hamiltonian=[]
+        self.create_hyperbolic_lattice()
  
     
     
     def gamma(self, z: np.complex128) -> np.complex128:
-        sigma = math.sqrt( (math.cos(2*math.pi / p) + math.cos(2*math.pi / q)) / (1 + math.cos(2*math.pi / q)) )
+        sigma = math.sqrt( (math.cos(2*math.pi / self.p) + math.cos(2*math.pi / self.q)) / (1 + math.cos(2*math.pi / self.q)) )
         z = np.complex128(z)
         result = (z + sigma) / (sigma * z + 1)
         return result
     
     def rot(self, z, n):
         z = np.complex128(z)
-        result = (math.cos(2 * math.pi * n / p) + math.sin(2 * math.pi * n / p) * 1j) * z
+        result = (math.cos(2 * math.pi * n / self.p) + math.sin(2 * math.pi * n / self.p) * 1j) * z
         return result
         
     def trans(self, z, n):
-        result = rot(z,-n)
-        result = gamma(result)
-        result = rot(result, n)
+        result = self.rot(z,-n)
+        result = self.gamma(result)
+        result = self.rot(result, n)
         return result
     
     # It is useful to define the distance function    
@@ -50,14 +52,14 @@ class HyperLattice:
     
         #Unit cell points
     
-        for n in range(p):
+        for n in range(self.p):
             self.sites = np.append(self.sites, r0*math.cos(math.pi*(1+2*n)/self.p) + r0*math.sin(math.pi*(1+2*n)/self.p)*1j )
     
     
         # Next, we generate new cells by applying translation generators (and their inverses).
         
         i=1
-        print(sites.size)
+        #print(sites.size)
         while i < self.l:
             i=i+1
             N=self.sites.size
@@ -65,7 +67,7 @@ class HyperLattice:
                 for n in range(N):
                     self.sites = np.append(self.sites, self.trans(self.sites[k], n)) # we apply  generators to each side...
             
-            self.sites = np.unique(sites) # and through away the repeated ones.
+            self.sites = np.unique(self.sites) # and through away the repeated ones.
         
         #self.sites = np.unique(self.sites)
         
@@ -82,26 +84,27 @@ class HyperLattice:
         while i < self.sites.size:
             ind_to_del = np.array([], dtype=int)
             for k in range(i+1,  self.sites.size):
-                if dist(self.sites[i], self.sites[k]) < 0.01:
+                if self.dist(self.sites[i], self.sites[k]) < 0.01:
                     ind_to_del=np.append(ind_to_del, k)
             self.sites = np.delete(self.sites, ind_to_del)
             i=i+1
         
         # Having generated the lattice, we can now build the adjacncy matrix.
         
-        print('We have ', sites.size,' sites in total.')
+        print('We have ', self.sites.size,' sites in total.')
         
         N=self.sites.size
         
-        C = dist(r0, 0)
-        B = math.asinh( math.sin( math.pi / p )*math.sinh(C))
+        C = self.dist(r0, 0)
+        B = math.asinh( math.sin( math.pi / self.p )*math.sinh(C))
         
+        self.hamiltonian=np.zeros((N,N))
         
         for i in range(N):
             
             for k in range(N):
-                if dist(sites[i], sites[k]) < 2*B+0.001:
-                    if dist(sites[i], sites[k]) > 2*B-0.001:
+                if self.dist(self.sites[i], self.sites[k]) < 2*B+0.001:
+                    if self.dist(self.sites[i], self.sites[k]) > 2*B-0.001:
                         self.hamiltonian[i, k] = -self.hopping
         
         print(self.hamiltonian)
@@ -112,7 +115,7 @@ class HyperBdG():
     def __init__(self, hyperlattice, V,T,mu,Delta=[]):
         self.lattice_sample=hyperlattice    
         self.lattice_H=hyperlattice.hamiltonian
-        self.N=len(lattice_sample.sites)
+        self.N=len(hyperlattice.sites)
         self.hopping=hyperlattice.hopping
         self.V=V
         self.T=T
@@ -132,8 +135,7 @@ class HyperBdG():
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
         self.vectors=vectors
-
-
+        
     #Fermi function
     def F(self, E):
         return 1/(np.exp((E)/self.T)+1)
@@ -180,16 +182,22 @@ class HyperBdG():
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
-    
-    #plot a field defined on a lattice (such as order parameter or superfluid density)
-    def field_plot(self, field, fieldname='',title='', edges=False,contrast=False, removeisols=True):
-        
-       
-        
 
-    def plot_spectrum(self):
-        
-        plt.hist(self.spectra,bins=100)
-        plt.show()
-        plt.savefig("spectrum.png")
-        plt.close()
+def main():
+    "Sample run input"
+    
+    p=7
+    q=3
+    l=3
+    t=1
+    V=5
+    T=0.02
+    mu=0
+    hypersample=HyperLattice(p,q,l,t)
+    #print(hypersample.hamiltonian)
+    #print(hypersample.sites)
+    BdGhypersample=HyperBdG(hypersample,V,T,mu)
+    BdGhypersample.BdG_cycle()
+    print(BdGhypersample.Delta)
+
+main()

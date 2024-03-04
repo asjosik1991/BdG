@@ -68,15 +68,7 @@ class HyperLattice:
                     self.sites = np.append(self.sites, self.trans(self.sites[k], n)) # we apply  generators to each side...
             
             self.sites = np.unique(self.sites) # and through away the repeated ones.
-        
-        #self.sites = np.unique(self.sites)
-        
-        #centers = np.array([])
-        #i=1        
-        #while i < l:
-        #    i=i+1
-        #    for n in range(p):
-        #        centers = np.append(centers, trans(0, n)) # we apply  generators to each side...      
+ 
  
         # Let us check again that no repeated sites are generated, and if they are, we through them away.
         
@@ -182,11 +174,52 @@ class HyperBdG():
             spectra, vectors = eigh(self.BdG_H)
             self.spectra=spectra
             self.vectors=vectors
+            
+    def field_plot(self, field, fieldname='',title='', edges=True):
+        
+        def connectpoints(p1,p2):
+            x1,x2=p1[0],p2[0]
+            y1,y2=p1[1],p2[1]
+            plt.plot([x1,x2],[y1,y2],color='grey',zorder=0)
+
+        coords=np.zeros((self.N,2))
+        coords[:,0]=np.real(self.lattice_sample.sites)
+        coords[:,1]=np.imag(self.lattice_sample.sites)
+
+
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+        rc('text', usetex=True)
+        rc('axes', titlesize=40)
+
+        print("plotting figure")
+        fig, ax = plt.subplots(figsize=(12.8,9.6))
+        
+        if edges:
+            for point_ind in range(self.N):
+                neigh_inds=np.nonzero(self.lattice_H[point_ind,:])
+                for neigh_ind in neigh_inds[0]:
+                    connectpoints(coords[point_ind],coords[neigh_ind])
+
+        cmp = plt.cm.get_cmap('plasma')
+        sc=ax.scatter(coords[:,0], coords[:,1], s=40, c=field, cmap=cmp)
+        
+        cbar=fig.colorbar(sc)
+        cbar.ax.tick_params(labelsize=24)
+        tick_locator = ticker.MaxNLocator(nbins=4)
+        cbar.locator = tick_locator
+        cbar.set_label(title, fontsize=24, rotation=0, labelpad=-35, y=1.1)
+        cbar.update_ticks()
+        #cbar.ax.set_title(title,fontsize=28)
+        ax.axis('off')
+        #plt.title(title)
+        figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
+        plt.savefig(figname)
+        plt.close()
 
 def main():
     "Sample run input"
     
-    p=7
+    p=8
     q=3
     l=3
     t=1
@@ -198,6 +231,7 @@ def main():
     #print(hypersample.sites)
     BdGhypersample=HyperBdG(hypersample,V,T,mu)
     BdGhypersample.BdG_cycle()
-    print(BdGhypersample.Delta)
+    #print(BdGhypersample.Delta)
+    BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
 
 main()

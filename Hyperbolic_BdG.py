@@ -11,6 +11,16 @@ import matplotlib.colors as mcolors
 import networkx as nx
 import math
 
+class Tree_graph:
+    def __init__(self,q,l,hopping):
+        self.q=q
+        self.l=l
+        self.hopping=hopping
+        self.sites=np.array([])
+        self.hamiltonian=[]
+        self.create_hyperbolic_lattice()
+    
+
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
     def __init__(self,p,q,l,hopping):
@@ -212,26 +222,62 @@ class HyperBdG():
         #cbar.ax.set_title(title,fontsize=28)
         ax.axis('off')
         #plt.title(title)
-        figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
+        figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.png".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
         plt.savefig(figname)
         plt.close()
 
-def main():
-    "Sample run input"
-    
-    p=8
-    q=3
-    l=3
-    t=1
-    V=5
-    T=0.02
-    mu=0
-    hypersample=HyperLattice(p,q,l,t)
-    #print(hypersample.hamiltonian)
-    #print(hypersample.sites)
-    BdGhypersample=HyperBdG(hypersample,V,T,mu)
-    BdGhypersample.BdG_cycle()
-    #print(BdGhypersample.Delta)
-    BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
+#create general array of Delta depending on different parameters for a given sample
+def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array):
+    Deltas={}
+    for V in V_array:
+        for mu in mu_array:
+            for T in T_array:
+                print("calculating V=",V,"mu=",mu,"T=",T)
+                BdG_sample=HyperBdG(lattice_sample, V, T, mu)
+                BdG_sample.BdG_cycle()
+                Deltas[(V,T,mu)]=BdG_sample.Delta
 
-main()
+    diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Deltas':Deltas}
+    filename="diagram_hyperbolic_p={}_q={}_l={}.pickle".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)
+    pickle.dump(diagram, file = open(filename, "wb"))
+
+def load_hyperdiagram(lattice_sample, suffix="diagram"):  
+    filename=suffix+"_hyperbolic_p={}_q={}_l={}.pickle".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)
+    try:
+        diagram=pickle.load(file = open(filename, "rb"))
+        return diagram
+    except (IOError, OSError, pickle.PickleError, pickle.UnpicklingError):
+        return -1
+
+def plot_diagram(lattice_sample, diagram):
+    if len(diagram['V'])==1:
+        V=diagram['V'][0]
+        x=diagram['mu']
+        y=diagram['T']
+        Deltas=diagram['Deltas']
+        z=np.zeros((len(x),len(y)))       
+        for i in range(len(y)):
+            for j in range(len(x)):
+                Delta=Deltas[(V,y[i],x[j])]
+                z[i,j]=np.mean(Delta)
+        fig, ax = plt.subplots(figsize=(9.6,7.2))
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+        rc('text', usetex=True)
+        plt.xlabel(r'$\mu$',fontsize=24)
+        plt.ylabel(r'$T$',fontsize=24)
+        tstr='{},{}'.format(lattice_sample.p, lattice_sample.q)
+        title='$\{'+tstr+'\}$'+'  l='+str(lattice_sample.l)
+        plt.title(title,fontsize=24)
+
+        plt.imshow(z, vmin=z.min(), vmax=z.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
+        cbar=plt.colorbar()
+        cbar.set_label(r'$\bar \Delta$', fontsize=24, rotation=0, labelpad=-35, y=1.1)
+        cbar.ax.tick_params(labelsize=24)
+        cbar.update_ticks()
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+
+        filename="diagram_hyperbolic_p={}_q={}_l={}.png".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)
+
+        plt.savefig(filename)
+        plt.close()

@@ -19,7 +19,7 @@ class Tree_graph:
         self.sites=np.array([])
         self.hamiltonian=[]
         self.create_hyperbolic_lattice()
-    
+
 
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
@@ -28,25 +28,21 @@ class HyperLattice:
         self.q=q
         self.l=l
         self.hopping=hopping
+        self.sigma=math.sqrt( (math.cos(2*math.pi / self.p) + math.cos(2*math.pi / self.q)) / (1 + math.cos(2*math.pi / self.q)) )
+
         self.sites=np.array([])
         self.hamiltonian=[]
         self.create_hyperbolic_lattice()
- 
-    
+
     
     def gamma(self, z: np.complex128) -> np.complex128:
-        sigma = math.sqrt( (math.cos(2*math.pi / self.p) + math.cos(2*math.pi / self.q)) / (1 + math.cos(2*math.pi / self.q)) )
-        z = np.complex128(z)
-        result = (z + sigma) / (sigma * z + 1)
-        return result
+        return  (z + self.sigma) / (self.sigma * z + 1)
     
-    def rot(self, z, n):
-        z = np.complex128(z)
-        result = (math.cos(2 * math.pi * n / self.p) + math.sin(2 * math.pi * n / self.p) * 1j) * z
-        return result
+    def rot(self, z: np.complex128, n)-> np.complex128:
+        return (math.cos(2 * math.pi * n / self.p) + math.sin(2 * math.pi * n / self.p) * 1j) * z
         
-    def trans(self, z, n):
-        result = self.rot(z,-n)
+    def trans(self, z: np.complex128, n)-> np.complex128:
+        result = self.rot(z,-n+0.5*self.p)
         result = self.gamma(result)
         result = self.rot(result, n)
         return result
@@ -58,26 +54,25 @@ class HyperLattice:
         
     def create_hyperbolic_lattice(self):
     
-        r0 = math.sqrt( math.cos(math.pi*(1/self.p +1/self.q) ) / math.cos(math.pi*(1/self.p - 1/self.q) ) )
+        r0 = math.sqrt(math.cos(math.pi*(1/self.p +1/self.q) ) / math.cos(math.pi*(1/self.p - 1/self.q) ) )
     
-        #Unit cell points
-    
+        #Unit cell points    
         for n in range(self.p):
-            self.sites = np.append(self.sites, r0*math.cos(math.pi*(1+2*n)/self.p) + r0*math.sin(math.pi*(1+2*n)/self.p)*1j )
-    
-    
+            delta=math.pi/self.p
+            self.sites = np.append(self.sites, r0*math.cos(math.pi*2*n/self.p+delta) + r0*math.sin(math.pi*2*n/self.p+delta)*1j )
+       
         # Next, we generate new cells by applying translation generators (and their inverses).
-        
         i=1
-        #print(sites.size)
+        out_layer=np.copy(self.sites)
         while i < self.l:
             i=i+1
-            N=self.sites.size
-            for k in range(N):
-                for n in range(N):
-                    self.sites = np.append(self.sites, self.trans(self.sites[k], n)) # we apply  generators to each side...
-            
-            self.sites = np.unique(self.sites) # and through away the repeated ones.
+            next_out_layer=np.array([])
+            for k in range(out_layer.size):
+                for n in range(self.p):
+                    next_out_layer=np.append(next_out_layer, self.trans(out_layer[k], n)) # we apply  generators to outer layer
+            self.sites=np.concatenate((self.sites, next_out_layer), axis=0) #add new sites to already calculated ones
+            self.sites = np.unique(self.sites) # and through away the repeated sites
+            out_layer=np.copy(next_out_layer)
  
  
         # Let us check again that no repeated sites are generated, and if they are, we through them away.
@@ -108,9 +103,7 @@ class HyperLattice:
                 if self.dist(self.sites[i], self.sites[k]) < 2*B+0.001:
                     if self.dist(self.sites[i], self.sites[k]) > 2*B-0.001:
                         self.hamiltonian[i, k] = -self.hopping
-        
-        print(self.hamiltonian)
-    
+            
     
 "Class for BdG hamiltonians and all corresponding functions"
 class HyperBdG():
@@ -185,7 +178,7 @@ class HyperBdG():
             self.spectra=spectra
             self.vectors=vectors
             
-    def field_plot(self, field, fieldname='',title='', edges=True):
+    def field_plot(self, field, fieldname=r'$\Delta$',title='', edges=True):
         
         def connectpoints(p1,p2):
             x1,x2=p1[0],p2[0]
@@ -212,30 +205,38 @@ class HyperBdG():
 
         cmp = plt.cm.get_cmap('plasma')
         sc=ax.scatter(coords[:,0], coords[:,1], s=40, c=field, cmap=cmp)
-        
         cbar=fig.colorbar(sc)
         cbar.ax.tick_params(labelsize=24)
         tick_locator = ticker.MaxNLocator(nbins=4)
         cbar.locator = tick_locator
-        cbar.set_label(title, fontsize=24, rotation=0, labelpad=-35, y=1.1)
+        cbar.set_label(fieldname, fontsize=28, rotation=0)
         cbar.update_ticks()
         #cbar.ax.set_title(title,fontsize=28)
         ax.axis('off')
-        #plt.title(title)
+        tstr='{},{}'.format(self.lattice_sample.p, self.lattice_sample.q)
+        title='$\{'+tstr+'\}$'+'  l='+str(self.lattice_sample.l)
+        plt.title(title,fontsize=24)
         figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.png".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
-        plt.savefig(figname)
-        plt.close()
+        plt.show()
+        #plt.savefig(figname)
+        #plt.close()
 
 #create general array of Delta depending on different parameters for a given sample
 def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array):
     Deltas={}
     for V in V_array:
         for mu in mu_array:
+            Delta_seed=[]
             for T in T_array:
                 print("calculating V=",V,"mu=",mu,"T=",T)
-                BdG_sample=HyperBdG(lattice_sample, V, T, mu)
+                if len(Delta_seed)>0 and np.max(Delta_seed)<10**(-6):
+                    Deltas[(V,T,mu)]=np.zeros(lattice_sample.sites.size)
+                    continue
+
+                BdG_sample=HyperBdG(lattice_sample, V, T, mu, Delta=Delta_seed)
                 BdG_sample.BdG_cycle()
                 Deltas[(V,T,mu)]=BdG_sample.Delta
+                Delta_seed=BdG_sample.Delta
 
     diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Deltas':Deltas}
     filename="diagram_hyperbolic_p={}_q={}_l={}.pickle".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)

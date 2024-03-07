@@ -14,13 +14,64 @@ import math
 class Tree_graph:
     def __init__(self,q,l,hopping):
         self.q=q
+        self.p='infty'
         self.l=l
         self.hopping=hopping
-        self.sites=np.array([])
-        self.hamiltonian=[]
-        self.create_hyperbolic_lattice()
+        self.sites=np.array([[0,0,0]]) #[complex coordinates,relative angle, site number]
+        self.a=1 #boost parameter
+        self.n_sites=int(np.rint(1+q*((q-1)**l-1)/(q-2))) #number of sites
+        self.hamiltonian=np.zeros((self.n_sites,self.n_sites))
+        self.create_tree_graph()
 
+    def set_sites_hoppings(self,i,j):
+        ind1=int(np.real(i))
+        ind2=int(np.real(j))
+        self.hamiltonian[ind1, ind2] = -self.hopping
+        self.hamiltonian[ind2, ind1] = -self.hopping
+  
+    def rot(self, z: np.complex128, phi)-> np.complex128:
+        return (math.cos(phi) + math.sin(phi) * 1j) * z
+        
+    def trans(self, z: np.complex128, phi)-> np.complex128:
+        boost = self.rot(self.a,phi)
+        return z+boost
+   
+    # It is useful to define the distance function    
+    def euсlid_dist(self, x, y):
+        return np.abs(x-y)
+    
+    def create_tree_graph(self):
+        
+        site_index=0 #variable nedeed for taking care of sites numeration and vuilding hamiltonian
+        #Initial points
+        out_layer=np.array([]).reshape(0,3)
+        for n in range(self.q):
+            site_index+=1
+            new_site=np.array( [[self.trans(self.sites[0,0], 2*math.pi*n/self.q), 2*math.pi*n/self.q, site_index ]])
+            out_layer = np.vstack([out_layer,new_site])
+            self.set_sites_hoppings(0, site_index)
+            
+        self.sites=np.concatenate((self.sites, out_layer),axis=0) #add new sites to already calculated ones
 
+        i=1
+        while i < self.l:
+            i=i+1
+            next_out_layer=np.array([]).reshape(0,3)
+            for k in range(out_layer[:,0].size):
+                for n in range(self.q-1):
+                    site_index+=1
+                    phi=2*math.pi*(n-0.5*(self.q-2))*(1/(self.q-0.6))**i+ out_layer[k,1]
+                    new_site= [[self.trans(out_layer[k,0], phi), phi, site_index ]]
+                    next_out_layer = np.vstack([next_out_layer,new_site])
+                    self.set_sites_hoppings(out_layer[k,2], site_index)
+
+            self.sites=np.concatenate((self.sites, next_out_layer),axis=0) #add new sites to already calculated ones
+            out_layer=np.copy(next_out_layer)
+
+        self.sites=self.sites[:,0]
+        print('We have ', self.sites.size,' sites in total. Analytical result is ', self.n_sites)            
+     
+ 
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
     def __init__(self,p,q,l,hopping):
@@ -97,12 +148,13 @@ class HyperLattice:
         
         self.hamiltonian=np.zeros((N,N))
         
-        for i in range(N):
-            
-            for k in range(N):
+        for i in range(N):   
+            for k in range(i+1,N):
                 if self.dist(self.sites[i], self.sites[k]) < 2*B+0.001:
                     if self.dist(self.sites[i], self.sites[k]) > 2*B-0.001:
                         self.hamiltonian[i, k] = -self.hopping
+                        self.hamiltonian[k, i] = -self.hopping
+
             
     
 "Class for BdG hamiltonians and all corresponding functions"
@@ -214,6 +266,9 @@ class HyperBdG():
         #cbar.ax.set_title(title,fontsize=28)
         ax.axis('off')
         tstr='{},{}'.format(self.lattice_sample.p, self.lattice_sample.q)
+        if self.lattice_sample.p=='infty':
+            tstr='{},{}'.format('\infty', self.lattice_sample.q)
+     
         title='$\{'+tstr+'\}$'+'  l='+str(self.lattice_sample.l)
         plt.title(title,fontsize=24)
         figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.png".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
@@ -267,6 +322,8 @@ def plot_diagram(lattice_sample, diagram):
         plt.xlabel(r'$\mu$',fontsize=24)
         plt.ylabel(r'$T$',fontsize=24)
         tstr='{},{}'.format(lattice_sample.p, lattice_sample.q)
+        if lattice_sample.p=='infty':
+            tstr='{},{}'.format('\infty', lattice_sample.q)
         title='$\{'+tstr+'\}$'+'  l='+str(lattice_sample.l)
         plt.title(title,fontsize=24)
 

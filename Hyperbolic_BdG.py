@@ -8,7 +8,6 @@ from numpy import random
 import pickle
 import time
 import matplotlib.colors as mcolors
-import networkx as nx
 import math
 
 class Tree_graph:

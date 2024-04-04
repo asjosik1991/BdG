@@ -45,7 +45,6 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
     if state=='super':
         
         for i in range(N_qy):
-            #print("q_y", q_y[i])
             for k_x in k:
                 for k_y in k:
                     eps=-2*(np.cos(k_x)+np.cos(k_y))
@@ -66,10 +65,9 @@ def uniform_2D_correlation_function(size, T, Delta=0, state='normal'):
              
             return q_y, Lambda
 
-def Aitken_uniform_BdG(size, V,T,mu):
+def Aitken_uniform_BdG(size, V,T,mu): #Aitken delta-squired process to increase convergence rate
     
     def gap_integral(x, energies_sq, V,size):
-        #print("inner function parameters", x, energies_sq, V, size)
         E=np.sqrt(energies_sq+x**2)
         return np.sum(V*x*(np.ones(size**2)-2*F(E,T))/E)
        
@@ -83,7 +81,6 @@ def Aitken_uniform_BdG(size, V,T,mu):
     Delta=1
     step=0
     V=0.5*V/size**2
-    #print("Delta_1", gap_integral(Delta, energies_sq, V, size))
 
     while True:
         Delta_1=gap_integral(Delta, energies_sq,V,size)
@@ -100,7 +97,6 @@ def Aitken_uniform_BdG(size, V,T,mu):
 def uniform_2D_BdG(size,V,T,mu,mode="square"):
     print("Calculation of uniform periodic BdG")
     k_array=np.linspace(0, 2*np.pi*(1-1/size), size)
-    #print("k_array", k_array)
     if mode=="square":
         energies_x=-2*np.cos(k_array)
         energies_y=np.copy(energies_x)-mu*np.ones(size)
@@ -113,10 +109,8 @@ def uniform_2D_BdG(size,V,T,mu,mode="square"):
             for k_y in k_array:
                 energies[i]=-2*(np.cos(k_x)+np.cos(k_y)+np.cos(k_x+k_y))-mu
                 i+=1
-        #print("triangle_energies", np.sort(energies)) 
  
     energies_sq=energies**2
-    #print("energies_sq", energies_sq)
     Delta=1
     step=0
     V=0.5*V/size**2

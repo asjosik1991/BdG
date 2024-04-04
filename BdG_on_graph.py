@@ -50,20 +50,24 @@ class Lattice():
     def create_list_of_sites(self):
         
         if self.mode=="1dchain":
+            print("creating sites for 1d chain")
             for i in range(self.size):
                 self.sites.append((i,0))
 
-        if self.mode == "triangle" or "regular_triangle":
+        if self.mode == "triangle" or self.mode == "regular_triangle":
+            print("creating sites for a triangle")
             for i in range(self.size):
                 for j in range(i+1):
                     self.sites.append((i,j))
 
         if self.mode == "square":
+            print("creating sites for a square")
             for i in range(self.size):
                 for j in range(self.size):
                     self.sites.append((i,j))
         
         if self.mode == "triangle_lattice":
+            print("creating sites for triangle lattice")
             for i in range(self.size):
                 for j in range(self.size):
                     self.sites.append((i,j))
@@ -306,7 +310,7 @@ class Lattice():
 
 "Class for BdG hamiltonians and all corresponding functions"
 class BdG():
-    def __init__(self, lattice_sample, V, T, mu, Delta=[]):
+    def __init__(self, lattice_sample, V, T, mu, Delta=[], HF=False):
         self.lattice_sample=lattice_sample
         self.size=lattice_sample.size
         self.pbc=lattice_sample.pbc
@@ -316,7 +320,9 @@ class BdG():
         self.V=V
         self.T=T
         self.mu=mu
+        self.HF=HF
         self.BdG_H=[]
+        
         if lattice_sample.mode!="regular_triangle":
             self.right_neighs=list(set([(1,0),(1,1)]) & set(self.lattice_sample.neigh))
         if lattice_sample.mode=="regular_triangle":
@@ -334,11 +340,16 @@ class BdG():
             self.initial_Delta=True
         
         #construct trivial hamiltonian
+
         self.construct_hamiltonian()
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
         self.vectors=vectors
-
+        if self.HF: #if we use Hartree-Fock terms, we need to make diagonalization twice
+            self.construct_hamiltonian_HF()
+            spectra, vectors = eigh(self.BdG_H)
+            self.spectra=spectra
+            self.vectors=vectors   
 
     #Fermi function
     def F(self, E):
@@ -471,7 +482,15 @@ class BdG():
     def construct_hamiltonian(self):
         H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
         self.BdG_H = np.block([[self.lattice_H - self.mu*np.eye(self.N), H_Delta], [H_Delta, -self.lattice_H + self.mu*np.eye(self.N)]])
-    
+
+    def construct_hamiltonian_HF(self):
+        
+        local_n=self.charge_density()
+        print("charge_density", np.mean(local_n), "effective μ", self.mu+0.5*self.V*np.mean(local_n))
+        H_Delta = diags([self.Delta], [0], shape=(self.N, self.N)).toarray()
+        Hartree_shift=diags([0.5*self.V*local_n], [0], shape=(self.N, self.N)).toarray()
+        self.BdG_H = np.block([[self.lattice_H - self.mu*np.eye(self.N)-Hartree_shift, H_Delta], [H_Delta, -self.lattice_H + self.mu*np.eye(self.N)+Hartree_shift]])
+
     
     def charge_density(self):
         fermi_dist=self.F(self.spectra[self.N:])
@@ -481,6 +500,18 @@ class BdG():
     
         return n
     
+    def gap_integral(self):
+        if not self.HF:
+            self.construct_hamiltonian()
+        if self.HF:
+            self.construct_hamiltonian_HF()
+
+        spectra, vectors = eigh(self.BdG_H)
+        self.spectra=spectra
+        self.vectors=vectors
+        F_weight=np.ones(self.N)-2*self.F(self.spectra[self.N:])
+        vectors_up=self.V * np.conj(self.vectors[self.N:,self.N:])
+        return np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], F_weight,[1],[0])
     
     def BdG_cycle(self):
         
@@ -489,25 +520,15 @@ class BdG():
         step=0
         if self.initial_Delta==False:
             self.Delta=0.5*np.ones(self.N)+0.1*np.random.rand(self.N)
-            self.construct_hamiltonian()
-            spectra, vectors = eigh(self.BdG_H)
-            self.spectra=spectra
-            self.vectors=vectors
             
         while True:
-            F_weight=np.ones(self.N)-2*self.F(self.spectra[self.N:])
-            vectors_up=self.V * np.conj(self.vectors[self.N:,self.N:])
-            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], F_weight,[1],[0])
+            Delta_next= self.gap_integral()
             error=np.max(np.abs((self.Delta-Delta_next)))
-            self.Delta=Delta_next
+            self.Delta=np.copy(Delta_next)
             print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
             step += 1
             if error<10**(-6):
                 break
-            self.construct_hamiltonian()
-            spectra, vectors = eigh(self.BdG_H)
-            self.spectra=spectra
-            self.vectors=vectors
     
     #plot a field defined on a lattice (such as order parameter or superfluid density)
     def field_plot(self, field, fieldname='',title='', edges=False,contrast=False, removeisols=True):
@@ -583,8 +604,9 @@ class BdG():
         ax.axis('off')
         #plt.title(title)
         figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)
-        plt.savefig(figname)
-        plt.close()
+        # plt.savefig(figname)
+        # plt.close()
+        plt.show()
         
 
     def plot_spectrum(self):

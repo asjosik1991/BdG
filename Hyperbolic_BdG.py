@@ -1,9 +1,10 @@
 import numpy as np
 from scipy.linalg import eigh
+from scipy.io import mmread, mmwrite
 import matplotlib.pyplot as plt
 from matplotlib import cm, rc, ticker
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
-from scipy.sparse import diags
+from scipy.sparse import diags, csr_matrix, lil_matrix
 from numpy import random
 import pickle
 import time
@@ -73,7 +74,7 @@ class Tree_graph:
  
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
-    def __init__(self,p,q,l,hopping):
+    def __init__(self,p,q,l,hopping, loadfile=False):
         self.p=p
         self.q=q
         self.l=l
@@ -82,9 +83,13 @@ class HyperLattice:
 
         self.sites=np.array([])
         self.hamiltonian=[]
-        self.create_hyperbolic_lattice()
-
-    
+        if not loadfile:
+            self.create_hyperbolic_lattice()
+        if loadfile: #load the hamiltonian matrix from a file
+            adj_matrix=mmread(loadfile)
+            self.hamiltonian=adj_matrix.todense()
+            self.sites=np.zeros(self.hamiltonian.shape[0])
+            
     def gamma(self, z: np.complex128) -> np.complex128:
         return  (z + self.sigma) / (self.sigma * z + 1)
     
@@ -158,7 +163,7 @@ class HyperLattice:
     
 "Class for BdG hamiltonians and all corresponding functions"
 class HyperBdG():
-    def __init__(self, hyperlattice, V,T,mu,Delta=[]):
+    def __init__(self, hyperlattice, V,T,mu,Delta=[], uniform=False):
         self.lattice_sample=hyperlattice    
         self.lattice_H=hyperlattice.hamiltonian
         self.N=len(hyperlattice.sites)
@@ -167,6 +172,7 @@ class HyperBdG():
         self.T=T
         self.mu=mu
         self.BdG_H=[]
+        self.uniform=uniform #if the system homogeneous
        
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
@@ -201,33 +207,51 @@ class HyperBdG():
     
         return n
     
-    
+    def gap_integral(self):
+        
+        self.construct_hamiltonian()
+        spectra, vectors = eigh(self.BdG_H)
+        self.spectra=spectra
+        self.vectors=vectors
+        F_weight=np.ones(self.N)-2*self.F(self.spectra[self.N:])
+        vectors_up=self.V * np.conj(self.vectors[self.N:,self.N:])
+        return np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], F_weight,[1],[0])
+        
     def BdG_cycle(self):
         
         print("charge density, n", np.mean(self.charge_density()))
         print("BdG cycle T=", self.T)
         step=0
-        if self.initial_Delta==False:
-            self.Delta=0.5*np.ones(self.N)+0.1*np.random.rand(self.N)
-            self.construct_hamiltonian()
-            spectra, vectors = eigh(self.BdG_H)
-            self.spectra=spectra
-            self.vectors=vectors
+        if not self.uniform:
+                
+            if self.initial_Delta==False:
+                self.Delta=0.5*np.ones(self.N)+0.1*np.random.rand(self.N)             
+            while True:
+                Delta_next=self.gap_integral()
+                error=np.max(np.abs((self.Delta-Delta_next)))
+                self.Delta=Delta_next
+                print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
+                step += 1
+                if error<10**(-6):
+                    break
+        
+        if self.uniform: #apply Aitken delta-squired process for homogeneous system (we assume that local gap is the same everywhere)
             
-        while True:
-            F_weight=np.ones(self.N)-2*self.F(self.spectra[self.N:])
-            vectors_up=self.V * np.conj(self.vectors[self.N:,self.N:])
-            Delta_next= np.einsum(vectors_up, [0,1], self.vectors[:self.N,self.N:], [0,1], F_weight,[1],[0])
-            error=np.max(np.abs((self.Delta-Delta_next)))
-            self.Delta=Delta_next
-            print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
-            step += 1
-            if error<10**(-6):
-                break
-            self.construct_hamiltonian()
-            spectra, vectors = eigh(self.BdG_H)
-            self.spectra=spectra
-            self.vectors=vectors
+            if self.initial_Delta==False:
+                Delta=0.5
+                self.Delta=Delta*np.ones(self.N)               
+            while True:
+                Delta_1=np.mean(self.gap_integral())
+                self.Delta=Delta_1*np.ones(self.N)  
+                Delta_2=np.mean(self.gap_integral())
+                Delta_next = Delta-(Delta_1-Delta)**2/(Delta_2-2*Delta_1+Delta)
+                error=np.max(np.abs((Delta-Delta_next)))
+                self.Delta=Delta_next*np.ones(self.N)
+                Delta=Delta_next
+                print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
+                step += 1
+                if error<10**(-6):
+                    break            
             
     def field_plot(self, field, fieldname=r'$\Delta$',title='', edges=True):
         
@@ -275,8 +299,24 @@ class HyperBdG():
         #plt.savefig(figname)
         #plt.close()
 
+    def plot_BdG_spectrum(self):
+        
+        plt.hist(self.spectra,bins=100)
+        plt.show()
+        # plt.savefig("spectrum.png")
+        # plt.close()
+        plt.show()
+        
+    def plot_lattice_spectrum(self):
+        spectra, vectors = eigh(self.lattice_H)
+        plt.hist(spectra,bins=100)
+        plt.show()
+        # plt.savefig("spectrum.png")
+        # plt.close()
+        plt.show()
+
 #create general array of Delta depending on different parameters for a given sample
-def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array):
+def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array, uniform=False):
     Deltas={}
     for V in V_array:
         for mu in mu_array:
@@ -287,7 +327,7 @@ def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array):
                     Deltas[(V,T,mu)]=np.zeros(lattice_sample.sites.size)
                     continue
 
-                BdG_sample=HyperBdG(lattice_sample, V, T, mu, Delta=Delta_seed)
+                BdG_sample=HyperBdG(lattice_sample, V, T, mu, Delta=Delta_seed, uniform=uniform)
                 BdG_sample.BdG_cycle()
                 Deltas[(V,T,mu)]=BdG_sample.Delta
                 Delta_seed=BdG_sample.Delta

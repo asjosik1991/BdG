@@ -604,9 +604,9 @@ class BdG():
         ax.axis('off')
         #plt.title(title)
         figname=fieldname+"_V={}_T={}_mu={}_mode={}_fractiter={}_delholes={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.mode, self.lattice_sample.fractal_iter, self.lattice_sample.alpha)
-        # plt.savefig(figname)
-        # plt.close()
-        plt.show()
+        plt.savefig(figname)
+        plt.close()
+        # plt.show()
         
 
     def plot_spectrum(self):
@@ -619,17 +619,23 @@ class BdG():
 "Calculations for different parameters"
 
 #create general array of Delta depending on different parameters for a given sample
-def calculate_diagram(lattice_sample, V_array, mu_array, T_array):
+def calculate_diagram(lattice_sample, V_array, mu_array, T_array, HF=False):
     Deltas={}
     del_arrays={}
     for V in V_array:
         for mu in mu_array:
+            Delta_seed=[]
             for T in T_array:
                 print("calculating V=",V,"mu=",mu,"T=",T)
-                BdG_sample=BdG(lattice_sample, V, T, mu)
+                if len(Delta_seed)>0 and np.max(Delta_seed)<10**(-6):
+                    Deltas[(V,T,mu)]=np.zeros(len(lattice_sample.sites))
+                    continue
+                
+                BdG_sample=BdG(lattice_sample, V, T, mu, Delta=Delta_seed, HF=HF)
                 BdG_sample.BdG_cycle()
                 Deltas[(V,T,mu)]=BdG_sample.Delta
                 del_arrays[(V,T,mu)]=BdG_sample.lattice_sample.del_array
+                Delta_seed=BdG_sample.Delta
 
     diagram={'lattice_sample':lattice_sample, 'V':V_array, 'mu':mu_array, 'T':T_array, 'Deltas':Deltas, 'dels':del_arrays}
     filename="diagram_mode={}_size={}_fractiter={}_delholes={}.pickle".format(lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
@@ -642,3 +648,36 @@ def load_diagram(lattice_sample, suffix="diagram"):
         return diagram
     except (IOError, OSError, pickle.PickleError, pickle.UnpicklingError):
         return -1
+
+def plot_diagram(lattice_sample, diagram):
+    if len(diagram['V'])==1:
+        V=diagram['V'][0]
+        x=diagram['mu']
+        y=diagram['T']
+        Deltas=diagram['Deltas']
+        z=np.zeros((len(x),len(y)))       
+        for i in range(len(y)):
+            for j in range(len(x)):
+                Delta=Deltas[(V,y[i],x[j])]
+                z[i,j]=np.mean(Delta)
+        fig, ax = plt.subplots(figsize=(9.6,7.2))
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+        rc('text', usetex=True)
+        plt.xlabel(r'$\mu$',fontsize=24)
+        plt.ylabel(r'$T$',fontsize=24)
+        title="{} size={} fractiter={}".format(lattice_sample.mode, lattice_sample.size, lattice_sample.fractal_iter)
+        plt.title(title,fontsize=24)
+
+        plt.imshow(z, vmin=z.min(), vmax=z.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
+        cbar=plt.colorbar()
+        cbar.set_label(r'$\bar \Delta$', fontsize=24, rotation=0, labelpad=-35, y=1.1)
+        cbar.ax.tick_params(labelsize=24)
+        cbar.update_ticks()
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+
+        filename="diagram_mode={}_size={}_fractiter={}_delholes={}.png".format(lattice_sample.mode, lattice_sample.size,lattice_sample.fractal_iter, round(lattice_sample.alpha,2))
+
+        plt.savefig(filename)
+        plt.close()
+        # plt.show()

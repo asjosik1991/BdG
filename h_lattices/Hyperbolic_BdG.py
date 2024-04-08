@@ -88,7 +88,7 @@ class HyperLattice:
         if loadfile: #load the hamiltonian matrix from a file
             adj_matrix=mmread(loadfile)
             self.hamiltonian=adj_matrix.todense()
-            self.sites=np.zeros(self.hamiltonian.shape[0])
+            self.sites=np.zeros(self.hamiltonian.shape[0]) #create a fake array of coordinates, that is needed for BdG class
             
     def gamma(self, z: np.complex128) -> np.complex128:
         return  (z + self.sigma) / (self.sigma * z + 1)
@@ -239,7 +239,9 @@ class HyperBdG():
             
             if self.initial_Delta==False:
                 Delta=0.5
-                self.Delta=Delta*np.ones(self.N)               
+                self.Delta=Delta*np.ones(self.N)
+            else:
+                Delta=self.Delta
             while True:
                 Delta_1=np.mean(self.gap_integral())
                 self.Delta=Delta_1*np.ones(self.N)  
@@ -376,5 +378,6 @@ def plot_diagram(lattice_sample, diagram):
 
         filename="diagram_hyperbolic_p={}_q={}_l={}.png".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)
 
-        plt.savefig(filename)
-        plt.close()
+        # plt.savefig(filename)
+        # plt.close()
+        plt.show()

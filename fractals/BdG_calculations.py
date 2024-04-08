@@ -1,10 +1,6 @@
 import numpy as np
 import BdG_on_graph as bdg
-from scipy.linalg import eigh
 import matplotlib.pyplot as plt
-import pickle
-import test_functions as test
-import networkx as nx
 
 def main():
 

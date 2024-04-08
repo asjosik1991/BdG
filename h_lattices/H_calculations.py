@@ -1,10 +1,6 @@
 import numpy as np
 import Hyperbolic_BdG as hbdg
-from scipy.linalg import eigh
 import matplotlib.pyplot as plt
-import pickle
-import test_functions as test
-import networkx as nx
 
 def main():
 
@@ -18,7 +14,7 @@ def main():
     
     #hypersample=hbdg.HyperLattice(p,q,l,t) #Hyperbolic lattice
 
-    hypersample=hbdg.HyperLattice(p,q,l,t, loadfile="8_3_256sites.mtx") #Hyperbolic lattice
+    hypersample=hbdg.HyperLattice(p,q,l,t, loadfile="adjs for h_lattices/8_3_256sites.mtx") #Hyperbolic lattice
     #hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
     
     #one BdG cycle and plotting the resu;t

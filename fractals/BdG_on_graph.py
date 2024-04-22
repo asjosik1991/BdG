@@ -500,6 +500,9 @@ class BdG():
     
         return n
     
+    def effective_mu_HF(self):
+        return self.mu+0.5*self.V*np.mean(self.charge_density())
+    
     def gap_integral(self):
         if not self.HF:
             self.construct_hamiltonian()
@@ -550,11 +553,7 @@ class BdG():
         y_coord = map(lambda x: x[1], coord)
         x_coord=list(x_coord)
         y_coord=list(y_coord)
-        viridis = cm.get_cmap('Blues', 256)
-        newcolors = viridis(np.linspace(0, 1, 256))
-        contrast_color = np.array(np.asarray(mcolors.to_rgb('crimson')+(1,)))
-        newcolors[:1, :] =contrast_color
-        newcmp = ListedColormap(newcolors)
+        
         fig, ax = plt.subplots(figsize=(12.8,9.6))
         
         if edges:
@@ -582,15 +581,26 @@ class BdG():
                 del y_coord[index]
 
         if contrast:
-            field_copy = np.copy(field)
-            field_copy[field_copy <= 0.01] = 0.01
-            sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp, zorder=1)
-            #cmax=np.max([0.04, np.mean(field)+1.2*np.std(field)])
-            #sc.set_clim(0, cmax)
+            if np.min(field)<0.01:
+                viridis = cm.get_cmap('Blues', 256)
+                newcolors = viridis(np.linspace(0, 1, 256))
+                contrast_color = np.array(np.asarray(mcolors.to_rgb('crimson')+(1,)))
+                newcolors[:1, :] =contrast_color
+                newcmp = ListedColormap(newcolors)
+                field_copy = np.copy(field)
+                field_copy[field_copy <= 0.01] = 0.01
+                sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp, zorder=1)
+            else:
+                viridis = cm.get_cmap('Blues', 256)
+                newcolors = viridis(np.linspace(0, 1, 256))
+                newcmp = ListedColormap(newcolors[20:])
+                field_copy = np.copy(field)
+                sc = ax.scatter(x_coord, y_coord, s=48, c=field_copy, cmap=newcmp, zorder=1)
+
         else:
             cmp = plt.cm.get_cmap('plasma')
             fig, ax = plt.subplots()
-            sc=ax.scatter(x_coord, y_coord, s=48, c=field, cmap=cmp)
+            sc=ax.scatter(x_coord, y_coord, s=48, c=field, cmap=cmp, zorder=1)
         
 
         

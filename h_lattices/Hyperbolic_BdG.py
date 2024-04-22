@@ -171,9 +171,13 @@ class HyperBdG():
         self.V=V
         self.T=T
         self.mu=mu
+        self.edge_sites=[]
+        self.bulk_sites=[]
         self.BdG_H=[]
         self.uniform=uniform #if the system homogeneous
-       
+        
+        self.select_edgebulk()
+        
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
             self.initial_Delta=False #it is necessary to obtain non-trivial solution of BdG equation
@@ -187,11 +191,20 @@ class HyperBdG():
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
         self.vectors=vectors
+    
+    #create array of indices of edge sites
+    def select_edgebulk(self):
+        for site_index in range(self.N):
+            n_neighs=len(np.nonzero(self.lattice_H[site_index,:])[0])
+            #print(n_neighs)
+            if n_neighs < self.lattice_sample.q:
+                self.edge_sites.append(site_index)
+            else:
+                self.bulk_sites.append(site_index)
         
     #Fermi function
     def F(self, E):
-        return 1/(np.exp((E)/self.T)+1)
-    
+        return 1/(np.exp((E)/self.T)+1)    
     
     
     def construct_hamiltonian(self):
@@ -346,7 +359,7 @@ def load_hyperdiagram(lattice_sample, suffix="diagram"):
     except (IOError, OSError, pickle.PickleError, pickle.UnpicklingError):
         return -1
 
-def plot_diagram(lattice_sample, diagram):
+def plot_hyperdiagram(lattice_sample, diagram):
     if len(diagram['V'])==1:
         V=diagram['V'][0]
         x=diagram['mu']
@@ -357,6 +370,7 @@ def plot_diagram(lattice_sample, diagram):
             for j in range(len(x)):
                 Delta=Deltas[(V,y[i],x[j])]
                 z[i,j]=np.mean(Delta)
+        
         fig, ax = plt.subplots(figsize=(9.6,7.2))
         plt.rc('font', family = 'serif', serif = 'cmr10')
         rc('text', usetex=True)

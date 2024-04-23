@@ -19,10 +19,21 @@ class Tree_graph:
         self.hopping=hopping
         self.sites=np.array([[0,0,0]]) #[complex coordinates,relative angle, site number]
         self.a=1 #boost parameter
-        self.n_sites=int(np.rint(1+q*((q-1)**l-1)/(q-2))) #number of sites
-        self.hamiltonian=np.zeros((self.n_sites,self.n_sites))
+        self.edge_sites=[]
+        self.bulk_sites=[]
+        self.N=int(np.rint(1+q*((q-1)**l-1)/(q-2))) #number of sites
+        self.hamiltonian=np.zeros((self.N,self.N))
         self.create_tree_graph()
-
+    
+    #create array of indices of edge and bulk sites
+    def select_edgebulk(self):
+        for site_index in range(self.N):
+            n_neighs=len(np.nonzero(self.hamiltonian[site_index,:])[0])
+            if n_neighs < self.q:
+                self.edge_sites.append(site_index)
+            else:
+                self.bulk_sites.append(site_index)
+                    
     def set_sites_hoppings(self,i,j):
         ind1=int(np.real(i))
         ind2=int(np.real(j))
@@ -69,8 +80,10 @@ class Tree_graph:
             out_layer=np.copy(next_out_layer)
 
         self.sites=self.sites[:,0]
-        print('We have ', self.sites.size,' sites in total. Analytical result is ', self.n_sites)            
-     
+        print('We have ', self.sites.size,' sites in total. Analytical result is ', self.N)            
+        
+        self.select_edgebulk() #make array of indices of edge and bulk sites
+
  
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
@@ -80,7 +93,9 @@ class HyperLattice:
         self.l=l
         self.hopping=hopping
         self.sigma=math.sqrt( (math.cos(2*math.pi / self.p) + math.cos(2*math.pi / self.q)) / (1 + math.cos(2*math.pi / self.q)) )
-
+        self.N=0
+        self.edge_sites=[]
+        self.bulk_sites=[]
         self.sites=np.array([])
         self.hamiltonian=[]
         if not loadfile:
@@ -88,8 +103,17 @@ class HyperLattice:
         if loadfile: #load the hamiltonian matrix from a file
             adj_matrix=mmread(loadfile)
             self.hamiltonian=adj_matrix.todense()
-            self.sites=np.zeros(self.hamiltonian.shape[0]) #create a fake array of coordinates, that is needed for BdG class
-            
+            self.N=self.hamiltonian.shape[0]
+        
+    #create array of indices of edge and bulk sites
+    def select_edgebulk(self):
+        for site_index in range(self.N):
+            n_neighs=len(np.nonzero(self.hamiltonian[site_index,:])[0])
+            if n_neighs < self.q:
+                self.edge_sites.append(site_index)
+            else:
+                self.bulk_sites.append(site_index)
+                
     def gamma(self, z: np.complex128) -> np.complex128:
         return  (z + self.sigma) / (self.sigma * z + 1)
     
@@ -145,19 +169,21 @@ class HyperLattice:
         
         print('We have ', self.sites.size,' sites in total.')
         
-        N=self.sites.size
+        self.N=self.sites.size
         
         C = self.dist(r0, 0)
         B = math.asinh( math.sin( math.pi / self.p )*math.sinh(C))
         
-        self.hamiltonian=np.zeros((N,N))
+        self.hamiltonian=np.zeros((self.N,self.N))
         
-        for i in range(N):   
-            for k in range(i+1,N):
+        for i in range(self.N):   
+            for k in range(i+1,self.N):
                 if self.dist(self.sites[i], self.sites[k]) < 2*B+0.001:
                     if self.dist(self.sites[i], self.sites[k]) > 2*B-0.001:
                         self.hamiltonian[i, k] = -self.hopping
                         self.hamiltonian[k, i] = -self.hopping
+        
+        self.select_edgebulk() #make array of indices of edge and bulk sites
 
             
     
@@ -166,18 +192,14 @@ class HyperBdG():
     def __init__(self, hyperlattice, V,T,mu,Delta=[], uniform=False):
         self.lattice_sample=hyperlattice    
         self.lattice_H=hyperlattice.hamiltonian
-        self.N=len(hyperlattice.sites)
+        self.N=hyperlattice.N
         self.hopping=hyperlattice.hopping
         self.V=V
         self.T=T
         self.mu=mu
-        self.edge_sites=[]
-        self.bulk_sites=[]
         self.BdG_H=[]
         self.uniform=uniform #if the system homogeneous
-        
-        self.select_edgebulk()
-        
+                
         if len(Delta)==0:
             self.Delta=np.zeros(self.N)
             self.initial_Delta=False #it is necessary to obtain non-trivial solution of BdG equation
@@ -191,16 +213,6 @@ class HyperBdG():
         spectra, vectors = eigh(self.BdG_H)
         self.spectra=spectra
         self.vectors=vectors
-    
-    #create array of indices of edge sites
-    def select_edgebulk(self):
-        for site_index in range(self.N):
-            n_neighs=len(np.nonzero(self.lattice_H[site_index,:])[0])
-            #print(n_neighs)
-            if n_neighs < self.lattice_sample.q:
-                self.edge_sites.append(site_index)
-            else:
-                self.bulk_sites.append(site_index)
         
     #Fermi function
     def F(self, E):
@@ -360,16 +372,9 @@ def load_hyperdiagram(lattice_sample, suffix="diagram"):
         return -1
 
 def plot_hyperdiagram(lattice_sample, diagram):
-    if len(diagram['V'])==1:
-        V=diagram['V'][0]
-        x=diagram['mu']
-        y=diagram['T']
-        Deltas=diagram['Deltas']
-        z=np.zeros((len(x),len(y)))       
-        for i in range(len(y)):
-            for j in range(len(x)):
-                Delta=Deltas[(V,y[i],x[j])]
-                z[i,j]=np.mean(Delta)
+    
+    def plotting(field, legend, file_suffix):
+        
         
         fig, ax = plt.subplots(figsize=(9.6,7.2))
         plt.rc('font', family = 'serif', serif = 'cmr10')
@@ -382,16 +387,38 @@ def plot_hyperdiagram(lattice_sample, diagram):
         title='$\{'+tstr+'\}$'+'  l='+str(lattice_sample.l)
         plt.title(title,fontsize=24)
 
-        plt.imshow(z, vmin=z.min(), vmax=z.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
+        plt.imshow(field, vmin=field.min(), vmax=field.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
         cbar=plt.colorbar()
-        cbar.set_label(r'$\bar \Delta$', fontsize=24, rotation=0, labelpad=-35, y=1.1)
+        cbar.set_label(legend, fontsize=24, rotation=0, labelpad=-35, y=1.1)
         cbar.ax.tick_params(labelsize=24)
         cbar.update_ticks()
         plt.xticks(fontsize=24)
         plt.yticks(fontsize=24)
 
-        filename="diagram_hyperbolic_p={}_q={}_l={}.png".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)
+        filename=file_suffix+"diagram_hyperbolic_p={}_q={}_l={}.png".format(lattice_sample.p, lattice_sample.q, lattice_sample.l)
 
-        # plt.savefig(filename)
-        # plt.close()
-        plt.show()
+        plt.savefig(filename)
+        plt.close()
+        #plt.show()
+
+    print(lattice_sample.edge_sites)
+
+    if len(diagram['V'])==1:
+        V=diagram['V'][0]
+        x=diagram['mu']
+        y=diagram['T']
+        Deltas=diagram['Deltas']
+        meanD=np.zeros((len(x),len(y)))      
+        edgeD=np.zeros((len(x),len(y)))
+        bulkD=np.zeros((len(x),len(y)))  
+        for i in range(len(y)):
+            for j in range(len(x)):
+                Delta=Deltas[(V,y[i],x[j])]
+                meanD[i,j]=np.mean(Delta)
+                edgeD[i,j]=np.mean(np.take(Delta, lattice_sample.edge_sites))
+                bulkD[i,j]=np.mean(np.take(Delta, lattice_sample.bulk_sites))
+        
+        plotting(meanD,r'$\bar\Delta$' ,"meanD_")
+        plotting(edgeD,r'$\bar\Delta_{edge}$' ,"edgeD_")
+        plotting(bulkD,r'$\bar\Delta_{bulk}$' ,"bulkD_")
+

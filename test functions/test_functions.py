@@ -1,12 +1,55 @@
 import numpy as np
-from scipy.linalg import eigh
-import matplotlib.pyplot as plt
-from scipy.sparse import diags
-from numpy import random
-import pickle
-import time
+from scipy import integrate
 
-"Test functions for homogeneous case"
+
+def bethe_dos(q,s):
+    if abs(s)<2*np.sqrt(q):
+        #print("check", abs(s), 2*np.sqrt(q))
+        return (q+1)/(2*np.pi)*np.sqrt(4*q-s**2)/((q+1)**2-s**2)
+    else:
+        #print("check2", abs(s), 2*np.sqrt(q))
+        return 0
+
+def aprx_hyp_dos(bs, s, eps=10**(-4)): #data can be taken from arXiv:2304.02382
+    
+    z=s-1j*eps
+    if np.imag(np.sqrt(z**2-4*bs[0]))<0:
+        G=(z-np.sqrt(z**2-4*bs[0]))/(2*bs[0])
+    else:
+        G=(z+np.sqrt(z**2-4*bs[0]))/(2*bs[0])
+    for i in range(len(bs)-1):
+        G=1/(z-bs[i+1]*G)
+    return np.imag(G)/np.pi
+
+def BCS_gap(dos, V,T):
+    
+    def gap_kernel(Delta):
+        def func(u):
+            return Delta*V*dos(u)*np.tanh(np.sqrt(u**2+Delta**2)/(2*T))/(2*np.sqrt(u**2+Delta**2))
+        return func
+          
+    def gap_integral(Delta):
+        return integrate(gap_kernel(Delta),-10,10)
+       
+    print("Calculation of BCS gap")
+
+    Delta=1
+    step=0
+    V=0.5*V
+
+    while True:
+        Delta_1=gap_integral(Delta)
+        Delta_2=gap_integral(Delta_1)
+        Delta_next= Delta-(Delta_1-Delta)**2/(Delta_2-2*Delta_1+Delta)
+        error=np.abs(Delta-Delta_next)
+        Delta=Delta_next
+        print("step", step, "error", error, "Delta", Delta)
+        step += 1
+        if error<10**(-6):
+            break
+    return Delta
+
+"Test functions for homogeneous flat case"
 #Fermi function
 def F(epsilon,T):
     return 1/(np.exp(epsilon/T)+1)

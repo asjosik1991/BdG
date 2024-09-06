@@ -21,21 +21,22 @@ def aprx_hyp_dos(bs, s, eps=10**(-4)): #data can be taken from arXiv:2304.02382
         G=1/(z-bs[i+1]*G)
     return np.imag(G)/np.pi
 
-def BCS_gap(dos, V,T):
+def BCS_gap(dos, mu, T, V=1):
     
     def gap_kernel(Delta):
         def func(u):
-            return Delta*V*dos(u)*np.tanh(np.sqrt(u**2+Delta**2)/(2*T))/(2*np.sqrt(u**2+Delta**2))
+            #print("gap kernel test", Delta, V, mu, T, u, dos(u-mu))
+            return Delta*V*dos(u)*np.tanh(np.sqrt((u-mu)**2+Delta**2)/(2*T))/(2*np.sqrt((u-mu)**2+Delta**2))
         return func
           
     def gap_integral(Delta):
-        return integrate(gap_kernel(Delta),-10,10)
+        kernel=gap_kernel(Delta)
+        return integrate.quad(kernel,-4,4)[0]
        
-    print("Calculation of BCS gap")
+    print("Calculation of BCS gap mu=", mu, "T=", T)
 
     Delta=1
     step=0
-    V=0.5*V
 
     while True:
         Delta_1=gap_integral(Delta)
@@ -45,7 +46,7 @@ def BCS_gap(dos, V,T):
         Delta=Delta_next
         print("step", step, "error", error, "Delta", Delta)
         step += 1
-        if error<10**(-6):
+        if error<10**(-6) or Delta<10**(-6):
             break
     return Delta
 

@@ -83,7 +83,10 @@ class Tree_graph:
         print('We have ', self.sites.size,' sites in total. Analytical result is ', self.N)            
         
         self.select_edgebulk() #make array of indices of edge and bulk sites
-
+    
+    def spectrum(self):
+        spectra, vectors = eigh(self.hamiltonian)
+        return spectra
  
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
@@ -184,6 +187,10 @@ class HyperLattice:
                         self.hamiltonian[k, i] = -self.hopping
         
         self.select_edgebulk() #make array of indices of edge and bulk sites
+    
+    def spectrum(self):
+        spectra, vectors = eigh(self.hamiltonian)
+        return spectra
 
             
     

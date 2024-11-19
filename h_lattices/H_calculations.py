@@ -9,8 +9,8 @@ def main():
     l=4
     t=1
     V=1
-    T=0.1
-    mu=0
+    T=0.01
+    mu=2.4
     
     #hypersample=hbdg.HyperLattice(p,q,l,t) #Hyperbolic lattice
 

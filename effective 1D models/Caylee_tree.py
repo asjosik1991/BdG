@@ -92,20 +92,18 @@ class Caylee_tree:
                 for i in range(N):
                     if i==0:
                         norm=1
-                    if i==1:
-                        norm=1/(self.q+1)
-                    if i>1:
-                        norm=self.q**(-i)
+                    if i>0:
+                        norm=1/(self.q+1)*self.q**(-(i-1))
                     vectors_up[i,:]=norm*vectors_up[i,:]
             
             if k==1:
                 for i in range(N):
-                    norm=self.q*self.q**(-i)
+                    norm=self.q*self.q**(-i-1)
                     vectors_up[i,:]=norm*vectors_up[i,:]
             
             if k>1:
                 for i in range(N):
-                    norm=(self.q-1)*self.q**(-i)
+                    norm=(self.q-1)*self.q**(-i-1)
                     vectors_up[i,:]=norm*vectors_up[i,:]
                     
             gap[k:]+=np.einsum(self.V*vectors_up, [0,1], vectors_down, [0,1], F_weight,[1],[0])
@@ -140,9 +138,9 @@ class Caylee_tree:
     
 def main():
     q=2
-    M=4
-    T=0.1
-    V=1/2
+    M=100
+    T=0.25
+    V=2
     mu=0
     CT=Caylee_tree(q, M, V, T, mu)
     #spectrum=CT.kinetic_spectrum()

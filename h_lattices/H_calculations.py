@@ -17,6 +17,7 @@ def main():
     #hypersample=hbdg.HyperLattice(p,q,l,t, loadfile="adjs for h_lattices/8_3_256sites.mtx") #Hyperbolic lattice
     hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
     print(np.round(hypersample.spectrum(),4))
+    print(len(hypersample.spectrum()))
     #one BdG cycle and plotting the resu;t
     BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
     # BdGhypersample.plot_lattice_spectrum()

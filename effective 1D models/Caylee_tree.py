@@ -31,10 +31,20 @@ class Caylee_tree:
     def kinetic_spectrum(self):
         spectrum=[]
         for k in range(self.M+1):
-
             H=self.effective_H(k)
+            print(np.shape(H), k)
             spectra, vectors = eigh(H)
-            spectrum.append(spectra)
+            print(np.round(spectra,4))
+            if k==0:
+                spectrum.append(spectra)
+            if k==1:
+                deg=self.q
+                for j in range(deg):
+                    spectrum.append(spectra)
+            if k>1:
+                deg=(self.q+1)*(self.q-1)*self.q**(k-2)
+                for j in range(deg):
+                    spectrum.append(spectra)
         spectrum=np.concatenate(spectrum)
         return np.sort(spectrum.flatten())
         
@@ -58,11 +68,11 @@ class Caylee_tree:
     def effective_BdG(self, k,Delta_k):
         H=self.effective_H(k)-self.mu*np.eye(self.M-k+1)
         Delta=np.diag(Delta_k)
-        print("k", k)
-        print("H", H)
-        print("Delta", Delta)
+        #print("k", k)
+        #print("H", H)
+       # print("Delta", Delta)
         BdG_H = np.block([[H, Delta], [Delta, -H]])
-        print(BdG_H)
+        #print(BdG_H)
         return BdG_H
     
     def gap_integral(self,Delta):
@@ -71,7 +81,7 @@ class Caylee_tree:
         
         for k in range(self.M+1):
             N=self.M-k+1
-            print("N",N)
+            #print("N",N)
             BdG_H=self.effective_BdG(k,Delta[k:])
             spectra, vectors = eigh(BdG_H)
             F_weight=np.ones(N)-2*self.F(spectra[N:])
@@ -118,19 +128,20 @@ def main():
     CT=Caylee_tree(q, M, V, T, mu)
     spectrum=CT.kinetic_spectrum()
     print(np.round(spectrum,4))
-    # Delta=CT.BdG_cycle()
-        
-    # fig, ax = plt.subplots(figsize=(9.6,7.2))
-    # plt.xticks(fontsize=20)
-    # plt.yticks(fontsize=20)
-    # plt.ylabel(r'$\Delta$',fontsize=20)
-    # plt.xlabel(r'distance from the center',fontsize=20)
-    # plt.plot(Delta)
+    print(len(spectrum))
+    Delta=CT.BdG_cycle()
+    
+    fig, ax = plt.subplots(figsize=(9.6,7.2))
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.ylabel(r'$\Delta$',fontsize=20)
+    plt.xlabel(r'distance from the center',fontsize=20)
+    plt.plot(Delta)
 
-    # plt.title("Caylee tree, q="+str(q)+", M="+str(M), fontsize=20)
-    # #plt.title("Bethe lattice DoS", fontsize=20)
+    plt.title("Caylee tree, q="+str(q)+", M="+str(M), fontsize=20)
+    #plt.title("Bethe lattice DoS", fontsize=20)
 
-    # plt.show()
-    # plt.close()
+    plt.show()
+    plt.close()
     
 main()

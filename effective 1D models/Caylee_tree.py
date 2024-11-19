@@ -32,9 +32,9 @@ class Caylee_tree:
         spectrum=[]
         for k in range(self.M+1):
             H=self.effective_H(k)
-            print(np.shape(H), k)
+            #print(np.shape(H), k)
             spectra, vectors = eigh(H)
-            print(np.round(spectra,4))
+            #print(np.round(spectra,4))
             if k==0:
                 spectrum.append(spectra)
             if k==1:
@@ -80,16 +80,35 @@ class Caylee_tree:
         gap=np.zeros(self.M+1)
         
         for k in range(self.M+1):
-            N=self.M-k+1
+            N=self.M+1-k
             #print("N",N)
             BdG_H=self.effective_BdG(k,Delta[k:])
             spectra, vectors = eigh(BdG_H)
             F_weight=np.ones(N)-2*self.F(spectra[N:])
+            vectors_up=np.copy(vectors[N:,N:])
+            vectors_down=np.copy(vectors[:N,N:])
+                    
             if k==0:
-                vectors_up=self.V * np.conj(vectors[N:,N:])
-            else:
-                vectors_up=self.V * np.conj(vectors[N:,N:])
-            gap[k:]+=np.einsum(vectors_up, [0,1], vectors[:N,N:], [0,1], F_weight,[1],[0])
+                for i in range(N):
+                    if i==0:
+                        norm=1
+                    if i==1:
+                        norm=1/(self.q+1)
+                    if i>1:
+                        norm=self.q**(-i)
+                    vectors_up[i,:]=norm*vectors_up[i,:]
+            
+            if k==1:
+                for i in range(N):
+                    norm=self.q*self.q**(-i)
+                    vectors_up[i,:]=norm*vectors_up[i,:]
+            
+            if k>1:
+                for i in range(N):
+                    norm=(self.q-1)*self.q**(-i)
+                    vectors_up[i,:]=norm*vectors_up[i,:]
+                    
+            gap[k:]+=np.einsum(self.V*vectors_up, [0,1], vectors_down, [0,1], F_weight,[1],[0])
         # k=0
         # N=self.M-k+1
         # print("N",N)
@@ -123,13 +142,14 @@ def main():
     q=2
     M=4
     T=0.1
-    V=1
+    V=1/2
     mu=0
     CT=Caylee_tree(q, M, V, T, mu)
-    spectrum=CT.kinetic_spectrum()
-    print(np.round(spectrum,4))
-    print(len(spectrum))
+    #spectrum=CT.kinetic_spectrum()
+    #print(np.round(spectrum,4))
+    #print(len(spectrum))
     Delta=CT.BdG_cycle()
+    print(np.round(Delta,4))
     
     fig, ax = plt.subplots(figsize=(9.6,7.2))
     plt.xticks(fontsize=20)

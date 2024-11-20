@@ -11,7 +11,7 @@ import time
 
 class effective_HL:
     
-    def __init__(self,M,V,T,mu,p=8,q=3):
+    def __init__(self,M,V,T,mu,p=8,q=3, n_types=1):
         self.q=q
         self.p=p
         self.M=M
@@ -129,10 +129,10 @@ class Caylee_tree:
     
 def main():
     q=2
-    M=40
+    M=50
     T=0.01
     V=1
-    mu=2.3
+    mu=0
     CT=Caylee_tree(q, M, V, T, mu)
     #spectrum=CT.kinetic_spectrum()
     #print(np.round(spectrum,4))

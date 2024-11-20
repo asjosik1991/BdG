@@ -11,6 +11,85 @@ import time
 import matplotlib.colors as mcolors
 import math
 
+class centered_HL:
+    def __init__(self,M):
+    #so far only {8,3}, the construction follow vertex types recursion relation
+        self.M=M
+        self.hamiltonian=self.make_lattice()
+        self.maxt=3
+    
+    def Lmatrix_substring(length, index1, index2=None):
+
+        # Initialize the array with zeros
+        arr = [0] * length
+    
+        # List of indices to set to 1
+        indices = [index1]
+        if index2 is not None:
+            indices.append(index2)
+    
+        # Set ones at the specified indices
+        for idx in indices:
+            if 0 <= idx < length:
+                arr[idx] = 1  
+        return arr
+
+    def make_next_shell(self, s_old):
+        s_new=[]
+        L_new=[]
+        ind=0
+        N_old=len(s_old)
+        
+        v=s_old[0] #initial check for special case
+        if v[0]==self.maxt:
+            s_new.append((0))
+            s_new.append((v[0],v[1]+1))
+            L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+            ind+=2
+            
+        for i in range(N_old):
+            v=s_old[i]
+            if v[0]>0:
+                if v[0]<self.maxt and v[1]<self.maxt:
+                    s_new.append((v[0]+1,v[1]))
+                    s_new.append((v[0],v[1]+1))
+                    L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+                    ind+=2
+                    
+                if v[0]==self.maxt and:
+                    s_new.append((v[0],v[1]+1))
+                    L_new.append(Lmatrix_substring(N_old,ind-1,ind))
+                    ind+=1
+                    
+                if v[1]==self.maxt and i<N_old-1:
+                    s_new.append((v[0]+1,v[1]))
+                    s_new.append((0))
+                    L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+                    ind+=2
+           
+            if v[0]==0:
+                    s_new.append((2,2))
+                    L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+                    ind+=1
+        
+        
+            
+            
+    def make_lattice(self):
+        s_old=[(1,1),(1,1),(1,1)] #s_1
+        L_1=[[1],[1],[1]]
+        L_arrays=[L_1]
+        for n in range(self.M):
+            s_new, L_new = self.make_next_shell(s_old)
+            L_arrays.append(L_new)
+            s_old=s_new
+        
+        #check symmetry
+            
+    def plot_graph()
+        
+    
+
 class Tree_graph:
     def __init__(self,q,l,hopping):
         self.q=q

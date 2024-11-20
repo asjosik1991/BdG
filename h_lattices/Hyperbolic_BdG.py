@@ -43,8 +43,9 @@ class centered_HL:
         v=s_old[0] #initial check for special case
         if v[0]==self.maxt:
             s_new.append((0,0))
+            L_new.append(self.Lmatrix_substring(N_old,0,None))
             s_new.append((1,v[1]+1))
-            L_new.append(self.Lmatrix_substring(N_old,ind,ind+1))
+            L_new.append(self.Lmatrix_substring(N_old,0,None))
             ind+=2
             
         for i in range(N_old):
@@ -52,30 +53,34 @@ class centered_HL:
             if v[0]>0:
                 if v[0]<self.maxt and v[1]<self.maxt:
                     s_new.append((v[0]+1,1))
+                    L_new.append(self.Lmatrix_substring(N_old,i,None))
                     s_new.append((1,v[1]+1))
-                    L_new.append(self.Lmatrix_substring(N_old,ind,ind+1))
+                    L_new.append(self.Lmatrix_substring(N_old,i,None))
                     ind+=2
                     
                 if v[0]==self.maxt and i>0:
+                    L_new[-1][i]=1
                     s_new.append((1,v[1]+1))
-                    L_new.append(self.Lmatrix_substring(N_old,ind-1,ind))
+                    L_new.append(self.Lmatrix_substring(N_old,i,None))
                     ind+=1
                     
                 if v[1]==self.maxt and i<N_old-1:
                     s_new.append((v[0]+1,1))
+                    L_new.append(self.Lmatrix_substring(N_old,i,None))
                     s_new.append((0,0))
-                    L_new.append(self.Lmatrix_substring(N_old,ind,ind+1))
+                    L_new.append(self.Lmatrix_substring(N_old,i,None))
                     ind+=2
            
             if v[0]==0:
                     s_new.append((2,2))
-                    L_new.append(self.Lmatrix_substring(N_old,ind,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i,None))
                     ind+=1
         
         v=s_old[-1]
         if v[1]==self.maxt:
             s_new.append((v[0]+1,1))
             L_new.append(self.Lmatrix_substring(N_old,ind,0))
+            L_new[0][-1]=1
         
         return s_new, L_new
         

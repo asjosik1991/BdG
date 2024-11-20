@@ -39,7 +39,7 @@ def main():
     # print(np.unique(np.round(BdGhypersample.Delta,4)))
     # BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
     
-    hypersample=hbdg.centered_HL(10)
+    hypersample=hbdg.centered_HL(3)
 
 
 

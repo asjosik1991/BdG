@@ -15,10 +15,10 @@ class centered_HL:
     def __init__(self,M):
     #so far only {8,3}, the construction follow vertex types recursion relation
         self.M=M
-        self.hamiltonian=self.make_lattice()
         self.maxt=3
+        self.hamiltonian=self.make_lattice()
     
-    def Lmatrix_substring(length, index1, index2=None):
+    def Lmatrix_substring(self, length, index1, index2):
 
         # Initialize the array with zeros
         arr = [0] * length
@@ -42,36 +42,42 @@ class centered_HL:
         
         v=s_old[0] #initial check for special case
         if v[0]==self.maxt:
-            s_new.append((0))
-            s_new.append((v[0],v[1]+1))
-            L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+            s_new.append((0,0))
+            s_new.append((1,v[1]+1))
+            L_new.append(self.Lmatrix_substring(N_old,ind,ind+1))
             ind+=2
             
         for i in range(N_old):
             v=s_old[i]
             if v[0]>0:
                 if v[0]<self.maxt and v[1]<self.maxt:
-                    s_new.append((v[0]+1,v[1]))
-                    s_new.append((v[0],v[1]+1))
-                    L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+                    s_new.append((v[0]+1,1))
+                    s_new.append((1,v[1]+1))
+                    L_new.append(self.Lmatrix_substring(N_old,ind,ind+1))
                     ind+=2
                     
-                if v[0]==self.maxt and:
-                    s_new.append((v[0],v[1]+1))
-                    L_new.append(Lmatrix_substring(N_old,ind-1,ind))
+                if v[0]==self.maxt and i>0:
+                    s_new.append((1,v[1]+1))
+                    L_new.append(self.Lmatrix_substring(N_old,ind-1,ind))
                     ind+=1
                     
                 if v[1]==self.maxt and i<N_old-1:
-                    s_new.append((v[0]+1,v[1]))
-                    s_new.append((0))
-                    L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+                    s_new.append((v[0]+1,1))
+                    s_new.append((0,0))
+                    L_new.append(self.Lmatrix_substring(N_old,ind,ind+1))
                     ind+=2
            
             if v[0]==0:
                     s_new.append((2,2))
-                    L_new.append(Lmatrix_substring(N_old,ind,ind+1))
+                    L_new.append(self.Lmatrix_substring(N_old,ind,None))
                     ind+=1
         
+        v=s_old[-1]
+        if v[1]==self.maxt:
+            s_new.append((v[0]+1,1))
+            L_new.append(self.Lmatrix_substring(N_old,ind,0))
+        
+        return s_new, L_new
         
             
             
@@ -80,13 +86,16 @@ class centered_HL:
         L_1=[[1],[1],[1]]
         L_arrays=[L_1]
         for n in range(self.M):
+            print(s_old)
             s_new, L_new = self.make_next_shell(s_old)
             L_arrays.append(L_new)
             s_old=s_new
+            print(L_new)
         
         #check symmetry
             
-    def plot_graph()
+    def plot_graph(self):
+        plt.plot()
         
     
 

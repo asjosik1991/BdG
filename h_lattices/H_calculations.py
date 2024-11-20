@@ -1,3 +1,4 @@
+
 import numpy as np
 import Hyperbolic_BdG as hbdg
 import matplotlib.pyplot as plt
@@ -15,15 +16,6 @@ def main():
     #hypersample=hbdg.HyperLattice(p,q,l,t) #Hyperbolic lattice
 
     #hypersample=hbdg.HyperLattice(p,q,l,t, loadfile="adjs for h_lattices/8_3_256sites.mtx") #Hyperbolic lattice
-    hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
-    #print(np.round(hypersample.spectrum(),4))
-    #print(len(hypersample.spectrum()))
-    #one BdG cycle and plotting the resu;t
-    BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
-    # BdGhypersample.plot_lattice_spectrum()
-    BdGhypersample.BdG_cycle()
-    print(np.unique(np.round(BdGhypersample.Delta,4)))
-    BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
     
     #plot phase diagram
     # V_array=[2]
@@ -34,6 +26,20 @@ def main():
     # hdiagram=hbdg.load_hyperdiagram(hypersample)
     # hbdg.plot_diagram(hypersample, hdiagram)
     
+    
+    #test_tree_graph
+    
+    # hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
+    # #print(np.round(hypersample.spectrum(),4))
+    # #print(len(hypersample.spectrum()))
+    # #one BdG cycle and plotting the resu;t
+    # BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
+    # # BdGhypersample.plot_lattice_spectrum()
+    # BdGhypersample.BdG_cycle()
+    # print(np.unique(np.round(BdGhypersample.Delta,4)))
+    # BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
+    
+    hypersample=hbdg.centered_HL(10)
 
 
 

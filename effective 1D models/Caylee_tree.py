@@ -24,8 +24,21 @@ class effective_Caylee_HL:
         self.V=V
         self.T=T
         self.mu=mu
+        self.shells_size=self.make_shells_size()
         self.Delta=[]
-
+    
+    def make_shells_size(self):
+        shells_size=[1,3,2*3,4*3,8*3-3,36]
+        d=[3,2*3,4*3,18,33]
+        
+        if self.M>5:
+            
+            while len(shells_size)<self.M+2:
+                d.append(2*d[-1]-2*d[-4]+d[-5])
+                shells_size.append(d[-1]+d[-5])
+        
+        return shells_size
+    
     def kinetic_spectrum(self):
         spectrum=[]
         for k in range(self.M+1):
@@ -45,11 +58,6 @@ class effective_Caylee_HL:
                     spectrum.append(spectra)
         spectrum=np.concatenate(spectrum)
         return np.sort(spectrum.flatten())
-        
-    def local_DoS(self, index):
-        eps=0.05
-        
-        return
     
     #Fermi function
     def F(self,E):
@@ -299,12 +307,15 @@ def main():
     V=1
     mu=0
     
-    CT=Caylee_tree(q, M, V, T, mu)
-    CT.BdG_cycle()
-    CT.plot_Delta()
+    # CT=Caylee_tree(q, M, V, T, mu)
+    # CT.BdG_cycle()
+    # CT.plot_Delta()
    
     # CT.plot_local_DoS()
     
+    HL=effective_Caylee_HL(M, V, T, mu)
+    print(HL.shells_size)
+    print(len(HL.shells_size))
 
     
 main()

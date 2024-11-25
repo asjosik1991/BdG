@@ -7,7 +7,7 @@ def main():
 
     p=8
     q=3
-    l=7
+    l=8
     t=1
     V=1
     T=0.01
@@ -32,15 +32,17 @@ def main():
     hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
     BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
     BdGhypersample.BdG_cycle()
-    BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
+    BdGhypersample.nx_Delta_plot()
+
+    #BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
     BdGhypersample.plot_radial_Delta()
    
     "test tree graph"
     
     hypersample=hbdg.centered_HL(l)
-    hypersample.plot_graph()
     BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
     BdGhypersample.BdG_cycle()
+    BdGhypersample.nx_Delta_plot()
     BdGhypersample.plot_radial_Delta()
 
 

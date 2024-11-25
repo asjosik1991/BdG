@@ -11,6 +11,7 @@ from scipy.io import mmread, mmwrite
 import pickle
 import time
 import math
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class centered_HL:
     def __init__(self,l,hopping=1):
@@ -405,7 +406,32 @@ class HyperBdG():
                 step += 1
                 if error<10**(-6):
                     break            
-            
+    
+    def nx_Delta_plot(self):
+        
+        colormap=plt.cm.plasma
+        G = nx.from_numpy_array(self.lattice_H) 
+        fig, ax=plt.subplots()
+        fig.set_figheight(15)
+        fig.set_figwidth(15)
+        nx.draw(G,pos=nx.shell_layout(G,nlist=self.lattice_sample.shell_list,rotate=0),node_color=self.Delta, node_size=900, node_shape='.',cmap=colormap)
+        
+        sm = plt.cm.ScalarMappable(cmap=colormap, norm=plt.Normalize(vmin=min(self.Delta), vmax=1.2*max(self.Delta)))
+        title='Number of shells='+str(self.lattice_sample.l)
+        plt.title(title,fontsize=36, y=0.96)
+        
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.3)  # Adjust size and padding as needed
+        cbar=fig.colorbar(sm, cax=cax)
+        cbar.ax.tick_params(labelsize=30)
+        tick_locator = ticker.MaxNLocator(nbins=5)
+        cbar.locator = tick_locator
+        cbar.set_label("$\Delta$", fontsize=42, rotation=0)
+        cbar.update_ticks()
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+        plt.show()
+    
     def field_plot(self, field, fieldname=r'$\Delta$',title='', edges=True):
         
         def connectpoints(p1,p2):
@@ -498,6 +524,8 @@ class HyperBdG():
 
         plt.show()
         plt.close()
+
+
 
 #create general array of Delta depending on different parameters for a given sample
 def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array, uniform=False):

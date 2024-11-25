@@ -1,14 +1,15 @@
-import numpy as np
-from scipy.linalg import eigh
-from scipy.io import mmread, mmwrite
 import matplotlib.pyplot as plt
 from matplotlib import cm, rc, ticker
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+import matplotlib.colors as mcolors
+import networkx as nx
 from scipy.sparse import diags, csr_matrix, lil_matrix
 from numpy import random
+import numpy as np
+from scipy.linalg import eigh
+from scipy.io import mmread, mmwrite
 import pickle
 import time
-import matplotlib.colors as mcolors
 import math
 
 class centered_HL:
@@ -16,22 +17,15 @@ class centered_HL:
     #so far only {8,3}, the construction follow vertex types recursion relation
         self.M=M
         self.maxt=3
+        self.N=0
+        self.shell_list=[]
         self.hamiltonian=self.make_lattice()
     
-    def Lmatrix_substring(self, length, index1, index2):
+    def Lmatrix_substring(self, length, index):
 
         # Initialize the array with zeros
         arr = [0] * length
-    
-        # List of indices to set to 1
-        indices = [index1]
-        if index2 is not None:
-            indices.append(index2)
-    
-        # Set ones at the specified indices
-        for idx in indices:
-            if 0 <= idx < length:
-                arr[idx] = 1  
+        arr[index] = 1  
         return arr
 
     def make_next_shell(self, s_old):
@@ -43,9 +37,9 @@ class centered_HL:
         v=s_old[0] #initial check for special case
         if v[0]==self.maxt:
             s_new.append((0,0))
-            L_new.append(self.Lmatrix_substring(N_old,0,None))
+            L_new.append(self.Lmatrix_substring(N_old,0))
             s_new.append((1,v[1]+1))
-            L_new.append(self.Lmatrix_substring(N_old,0,None))
+            L_new.append(self.Lmatrix_substring(N_old,0))
             ind+=2
             
         for i in range(N_old):
@@ -53,57 +47,75 @@ class centered_HL:
             if v[0]>0:
                 if v[0]<self.maxt and v[1]<self.maxt:
                     s_new.append((v[0]+1,1))
-                    L_new.append(self.Lmatrix_substring(N_old,i,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i))
                     s_new.append((1,v[1]+1))
-                    L_new.append(self.Lmatrix_substring(N_old,i,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i))
                     ind+=2
                     
                 if v[0]==self.maxt and i>0:
                     L_new[-1][i]=1
                     s_new.append((1,v[1]+1))
-                    L_new.append(self.Lmatrix_substring(N_old,i,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i))
                     ind+=1
                     
                 if v[1]==self.maxt and i<N_old-1:
                     s_new.append((v[0]+1,1))
-                    L_new.append(self.Lmatrix_substring(N_old,i,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i))
                     s_new.append((0,0))
-                    L_new.append(self.Lmatrix_substring(N_old,i,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i))
                     ind+=2
            
             if v[0]==0:
                     s_new.append((2,2))
-                    L_new.append(self.Lmatrix_substring(N_old,i,None))
+                    L_new.append(self.Lmatrix_substring(N_old,i))
                     ind+=1
         
         v=s_old[-1]
         if v[1]==self.maxt:
+            #print("ind",ind)
             s_new.append((v[0]+1,1))
-            L_new.append(self.Lmatrix_substring(N_old,ind,0))
+            L_new.append(self.Lmatrix_substring(N_old,N_old-1))
             L_new[0][-1]=1
         
         return s_new, L_new
         
-            
-            
+                    
     def make_lattice(self):
-        s_old=[(1,1),(1,1),(1,1)] #s_1
-        L_1=[[1],[1],[1]]
-        L_arrays=[L_1]
+        H=np.matrix([0])
+        self.shell_list=[[0],[1,2,3]]
+        self.N=4
+        s=[(1,1),(1,1),(1,1)] #s_1
+        L=[[1],[1],[1]]
+        #L_arrays=[L]
+        H=np.block([[H, np.matrix(L).T], [np.matrix(L), np.zeros((3,3))]])
+
         for n in range(self.M):
-            print(s_old)
-            s_new, L_new = self.make_next_shell(s_old)
-            L_arrays.append(L_new)
-            s_old=s_new
-            print(L_new)
+            #print(s)
+            #print("shell_list", self.shell_list)
+            Ns_old=len(s)
+            s, L = self.make_next_shell(s)
+            #L_arrays.append(L)
+            Ns=len(s)
+            Lnormed=np.block([np.zeros((Ns,self.N-Ns_old)),np.matrix(L)])
+            self.shell_list.append(list(range(self.N,self.N+Ns)))
+            self.N=self.N+Ns
+            #print(L)
+            #print(H.shape, np.matrix(L).shape, np.matrix(L).T.shape,np.zeros((Ns,Ns)).shape )
+            H=np.block([[H, Lnormed.T], [Lnormed, np.zeros((Ns,Ns))]])
         
-        #check symmetry
+        if np.max(np.abs(H-H.T))==0:  
+            print("Hamiltonian is symmetric")
+        return H
             
     def plot_graph(self):
-        plt.plot()
+        G = nx.from_numpy_array(self.hamiltonian) 
+        fig, x=plt.subplots()
+        fig.set_figheight(15)
+        fig.set_figwidth(15)
+        nx.draw(G,pos=nx.shell_layout(G,nlist=self.shell_list,rotate=0),node_shape='.',cmap='tab20')
+        plt.show()
         
     
-
 class Tree_graph:
     def __init__(self,q,l,hopping):
         self.q=q
@@ -440,6 +452,9 @@ class HyperBdG():
         plt.show()
         # plt.savefig("spectrum.png")
         # plt.close()
+    
+    def plot_radial_Delta(self):
+        radial_Delta=[]
         plt.show()
 
 #create general array of Delta depending on different parameters for a given sample

@@ -39,7 +39,9 @@ def main():
     # print(np.unique(np.round(BdGhypersample.Delta,4)))
     # BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
     
-    hypersample=hbdg.centered_HL(3)
+    hypersample=hbdg.centered_HL(5)
+    print(hypersample.hamiltonian.shape)
+    hypersample.plot_graph()
 
 
 

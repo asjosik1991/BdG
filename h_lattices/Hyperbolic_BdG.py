@@ -13,11 +13,12 @@ import time
 import math
 
 class centered_HL:
-    def __init__(self,M):
+    def __init__(self,l,hopping=1):
     #so far only {8,3}, the construction follow vertex types recursion relation
-        self.M=M
+        self.l=l
         self.maxt=3
         self.N=0
+        self.hopping=hopping
         self.shell_list=[]
         self.hamiltonian=self.make_lattice()
     
@@ -89,7 +90,7 @@ class centered_HL:
         #L_arrays=[L]
         H=np.block([[H, np.matrix(L).T], [np.matrix(L), np.zeros((3,3))]])
 
-        for n in range(self.M):
+        for n in range(self.l-1):
             #print(s)
             #print("shell_list", self.shell_list)
             Ns_old=len(s)
@@ -126,6 +127,7 @@ class Tree_graph:
         self.a=1 #boost parameter
         self.edge_sites=[]
         self.bulk_sites=[]
+        self.shell_list=self.make_shells()
         self.N=int(np.rint(1+q*((q-1)**l-1)/(q-2))) #number of sites
         self.hamiltonian=np.zeros((self.N,self.N))
         self.create_tree_graph()
@@ -156,6 +158,18 @@ class Tree_graph:
     def euсlid_dist(self, x, y):
         return np.abs(x-y)
     
+    def make_shells(self):
+        shell_list=[[0]]
+        shell_list.append(list(range(1,self.q+1)))
+        ind=1+self.q
+        for i in range(self.l-1):
+            n_shell=len(shell_list[-1])
+            shell_list.append(list(range(ind,ind+n_shell*(self.q-1))))
+            ind+=n_shell*(self.q-1)
+        #print(self.shell_list)
+        return shell_list
+            
+        
     def create_tree_graph(self):
         
         site_index=0 #variable nedeed for taking care of sites numeration and vuilding hamiltonian
@@ -166,7 +180,7 @@ class Tree_graph:
             new_site=np.array( [[self.trans(self.sites[0,0], 2*math.pi*n/self.q), 2*math.pi*n/self.q, site_index ]])
             out_layer = np.vstack([out_layer,new_site])
             self.set_sites_hoppings(0, site_index)
-            
+         
         self.sites=np.concatenate((self.sites, out_layer),axis=0) #add new sites to already calculated ones
 
         i=1
@@ -454,8 +468,36 @@ class HyperBdG():
         # plt.close()
     
     def plot_radial_Delta(self):
+        
         radial_Delta=[]
+        radial_sigma=[]
+        #print(self.lattice_sample.shell_list)
+        for shell in self.lattice_sample.shell_list:
+            #print(shell)
+            D=0
+            D2=0
+            for i in shell:
+                D+=self.Delta[i]
+                D2+=self.Delta[i]**2
+            D=D/len(shell)
+            D2=D2/len(shell)
+            sigma=np.sqrt(np.abs(D2-D**2))
+            radial_Delta.append(D)
+            radial_sigma.append(sigma)
+        
+        fig, ax = plt.subplots(figsize=(9.6,7.2))
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.ylabel(r'$\Delta$',fontsize=20)
+        plt.xlabel(r'distance from the center',fontsize=20)
+        plt.plot(radial_Delta, label=r"$\Delta$")
+        plt.plot(radial_sigma, label=r"$\sigma$")
+        plt.legend(fontsize=20)
+        plt.title(r"Radial $\Delta$ shells number="+str(self.lattice_sample.l), fontsize=20)
+        #plt.title("Bethe lattice DoS", fontsize=20)
+
         plt.show()
+        plt.close()
 
 #create general array of Delta depending on different parameters for a given sample
 def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array, uniform=False):

@@ -7,11 +7,11 @@ def main():
 
     p=8
     q=3
-    l=4
+    l=7
     t=1
     V=1
     T=0.01
-    mu=2.4
+    mu=0
     
     #hypersample=hbdg.HyperLattice(p,q,l,t) #Hyperbolic lattice
 
@@ -27,21 +27,21 @@ def main():
     # hbdg.plot_diagram(hypersample, hdiagram)
     
     
-    #test_tree_graph
+    "test tree graph"
     
-    # hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
-    # #print(np.round(hypersample.spectrum(),4))
-    # #print(len(hypersample.spectrum()))
-    # #one BdG cycle and plotting the resu;t
-    # BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
-    # # BdGhypersample.plot_lattice_spectrum()
-    # BdGhypersample.BdG_cycle()
-    # print(np.unique(np.round(BdGhypersample.Delta,4)))
-    # BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
+    hypersample=hbdg.Tree_graph(q,l,t) #Tree graph
+    BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
+    BdGhypersample.BdG_cycle()
+    BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
+    BdGhypersample.plot_radial_Delta()
+   
+    "test tree graph"
     
-    hypersample=hbdg.centered_HL(5)
-    print(hypersample.hamiltonian.shape)
+    hypersample=hbdg.centered_HL(l)
     hypersample.plot_graph()
+    BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
+    BdGhypersample.BdG_cycle()
+    BdGhypersample.plot_radial_Delta()
 
 
 

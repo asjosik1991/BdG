@@ -418,7 +418,7 @@ class HyperBdG():
         
         sm = plt.cm.ScalarMappable(cmap=colormap, norm=plt.Normalize(vmin=min(self.Delta), vmax=1.2*max(self.Delta)))
         title='Number of shells='+str(self.lattice_sample.l)
-        plt.title(title,fontsize=36, y=0.96)
+        plt.title(title,fontsize=34, y=0.95)
         
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.3)  # Adjust size and padding as needed
@@ -428,7 +428,7 @@ class HyperBdG():
         cbar.locator = tick_locator
         cbar.set_label("$\Delta$", fontsize=42, rotation=0)
         cbar.update_ticks()
-        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        #plt.tight_layout(rect=[0, 0, 1, 0.95])
 
         plt.show()
     

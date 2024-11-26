@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.linalg import eigh
+from scipy.linalg import eigh, eig
 import matplotlib.pyplot as plt
 from scipy.sparse import diags
 from scipy import integrate
@@ -7,7 +7,7 @@ from numpy import random
 import pickle
 import time
 
-def construct_symmetric_block_matrix(matrices):
+def construct_symmetric_block_matrix(matrices, matrices_d=None):
     """
     Constructs a square symmetric matrix with the specified block structure,
     accommodating matrices of varying sizes, including 1x1 matrices.
@@ -57,7 +57,10 @@ def construct_symmetric_block_matrix(matrices):
         symmetric_matrix[row_start:row_end, col_start:col_end] = matrices[i]
         
         # Lower subdiagonal block H_i.T
-        symmetric_matrix[col_start:col_end, row_start:row_end] = matrices[i].T
+        if matrices_d == None:
+            symmetric_matrix[col_start:col_end, row_start:row_end] = matrices[i].T
+        else:
+            symmetric_matrix[col_start:col_end, row_start:row_end] = matrices_d[i]
     
     return symmetric_matrix
 
@@ -82,15 +85,27 @@ class effective_Caylee2type_HL:
         self.T=T
         self.mu=mu
         self.shells_size, self.d2, self.d1=self.make_shells_size()
-        self.hops=self.make_hops()
+        self.hops, self.hops_d=self.make_hops()
         
         self.Delta=[]
+    
+    def local_DoS_frompaths(self,energy):
+        H=self.effective_H(0)
+        H1=np.copy(H)
+        K=20
+        eps=0.1
+        e=energy-1j*eps
+        g=1/e
+        for i in range(K):
+            g+=H1[0,0]*(e**(-i-2))
+            H1=H1@H
+        return np.imag(g)/np.pi
     
     def local_DoS(self, energy):
         eps=0.01
         H=self.effective_H(0)
         #print(np.round(H,4))
-        spectra, vectors = eigh(H)
+        spectra, vectors = eig(H)
         print(np.round(spectra,4))
         rho=0
         for i in range(self.M+1):
@@ -121,19 +136,39 @@ class effective_Caylee2type_HL:
         return shells_size, d2, d1
     
     def make_hops(self):
-        hops_array=[]
-        hops_array.append(np.array([[0,np.sqrt(self.q+1)]]))
+        
+        hops=[]
+        hops_d=[]
+        hop=np.array([[0,self.q+1]])
+        hops.append(hop)
+        hops_d.append(hop.T/3)
         k=1
         for i in range(self.M-k):
             hop=np.zeros((2,2))
-            if self.d1[k+i]>0:
-                hop[0,1]=np.sqrt(self.d2[k+i+1]/self.d1[k+i])
-            hop[1,0]=np.sqrt(self.d1[k+i+1]/self.d2[k+i])
-            hop[1,1]=np.sqrt(self.d2[k+i+1]/self.d2[k+i])
-            hops_array.append(hop)
+            hop[0,1]=1
+            hop[1,0]=2*self.d1[k+i+1]/self.shells_size[k+i+1]
+            hop[1,1]=2*self.d2[k+i+1]/self.shells_size[k+i+1]
+            hops.append(hop)
+            
+            hop=np.zeros((2,2))
+            hop[0,1]=2
+            hop[1,0]=self.d1[k+i+1]/self.shells_size[k+i+1]
+            hop[1,1]=self.d2[k+i+1]/self.shells_size[k+i+1]
+            hops_d.append(hop)
+            
+        # hops_array=[]
+        # hops_array.append(np.array([[0,np.sqrt(self.q+1)]]))
+        # k=1
+        # for i in range(self.M-k):
+        #     hop=np.zeros((2,2))
+        #     if self.d1[k+i]>0:
+        #         hop[0,1]=np.sqrt(self.d2[k+i+1]/self.d1[k+i])
+        #     hop[1,0]=np.sqrt(self.d1[k+i+1]/self.d2[k+i])
+        #     hop[1,1]=np.sqrt(self.d2[k+i+1]/self.d2[k+i])
+        #     hops_array.append(hop)
             
         #print(hops_array)
-        return hops_array
+        return hops, hops_d
     
     #Fermi function
     def F(self,E):
@@ -141,7 +176,7 @@ class effective_Caylee2type_HL:
     
     def effective_H(self,k):  
         #print(self.hops[k:][0])
-        return construct_symmetric_block_matrix(self.hops[k:])
+        return construct_symmetric_block_matrix(self.hops[k:], self.hops_d[k:])
     
     def effective_BdG(self, k,Delta_k):
         H=self.effective_H(k)-self.mu*np.eye(self.M-k+1)
@@ -227,14 +262,15 @@ class effective_Caylee2type_HL:
     
     def plot_local_DoS(self):
         
-        energies=np.linspace(-3.5, 3.5,100)
+        energies=np.linspace(-3.5, -1,100)
         fig, ax = plt.subplots(figsize=(9.6,7.2))
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=20)
         plt.ylabel(r'$\rho(s)$',fontsize=20)
         plt.xlabel(r's',fontsize=20)
-        plt.plot(energies, self.local_DoS(energies))
-        
+        #plt.plot(energies, self.local_DoS(energies))
+        plt.plot(energies, self.local_DoS_frompaths(energies))
+
         limit_dos=[]
         for energy in energies:
             limit_dos.append(bethe_dos(self.q, energy))
@@ -551,7 +587,10 @@ def main():
    
     #CT.plot_local_DoS()
     
-    #HL=effective_Caylee_HL(M, V, T, mu)
+    # HL=effective_Caylee_HL(M, V, T, mu)
+    # H=HL.effective_H(0)
+    # H_test = np.linalg.matrix_power(H,10)
+    # print(np.round(H_test[0,0],4))
     # # HL.BdG_cycle()
     # # HL.plot_Delta()
    
@@ -560,9 +599,9 @@ def main():
     HL=effective_Caylee2type_HL(M, V, T, mu)
     # HL.BdG_cycle()
     # HL.plot_Delta()
-   
+    # H=HL.effective_H(0)
+    # H_test = np.linalg.matrix_power(H,10)
+    # print(np.round(H_test[0,0],4))
     HL.plot_local_DoS()
-    
-
     
 main()

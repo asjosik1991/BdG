@@ -68,6 +68,9 @@ def bethe_dos(q,s):
     else:
         #print("check2", abs(s), 2*np.sqrt(q))
         return 0
+    
+    
+    
 
 class effective_Caylee2type_HL:
     
@@ -79,14 +82,16 @@ class effective_Caylee2type_HL:
         self.T=T
         self.mu=mu
         self.shells_size, self.d2, self.d1=self.make_shells_size()
-        self.hops_matrices=self.make_hops()
+        self.hops=self.make_hops()
         
         self.Delta=[]
     
     def local_DoS(self, energy):
         eps=0.01
-        BdG_H=self.effective_H(0)
-        spectra, vectors = eigh(BdG_H)
+        H=self.effective_H(0)
+        #print(np.round(H,4))
+        spectra, vectors = eigh(H)
+        print(np.round(spectra,4))
         rho=0
         for i in range(self.M+1):
             rho+=np.imag(vectors[0,i]*np.conj(vectors[0,i])/(energy -spectra[i]-1j*eps))         
@@ -99,23 +104,25 @@ class effective_Caylee2type_HL:
         for i in range(6):
             d1.append(shells_size[i]-d2[i])
         
-        if self.M>5:
-            
+        if self.M>5:         
             while len(shells_size)<self.M+2:
                 d2.append(2*d2[-1]-2*d2[-4]+d2[-5])
                 shells_size.append(d2[-1]+d2[-5])
                 d1.append(shells_size[-1]-d2[-1])
         
-        #test to reproduce usual Caylee tree
+        # #test to reproduce usual Caylee tree
         # shells_size=[1,3]
         # while len(shells_size)<self.M+2:
         #     shells_size.append(shells_size[-1]*2)
+        # d1=(self.M+2)*[0]
+        # d2=shells_size
+
         
         return shells_size, d2, d1
     
     def make_hops(self):
         hops_array=[]
-        hops_array.append([[0,np.sqrt(self.q+1)]])
+        hops_array.append(np.array([[0,np.sqrt(self.q+1)]]))
         k=1
         for i in range(self.M-k):
             hop=np.zeros((2,2))
@@ -132,7 +139,8 @@ class effective_Caylee2type_HL:
     def F(self,E):
         return 1/(np.exp((E)/self.T)+1)    
     
-    def effective_H(self,k):   
+    def effective_H(self,k):  
+        #print(self.hops[k:][0])
         return construct_symmetric_block_matrix(self.hops[k:])
     
     def effective_BdG(self, k,Delta_k):
@@ -147,7 +155,7 @@ class effective_Caylee2type_HL:
     
     def gap_integral(self,Delta):
         
-        gap=np.zeros(self.M+1)
+        gap=np.zeros(2*self.M+1)
         
         for k in range(self.M+1):
             N=self.M+1-k
@@ -159,16 +167,30 @@ class effective_Caylee2type_HL:
             vectors_down=np.copy(vectors[:N,N:])
                     
             if k==0:
-                for i in range(N):
-                    norm=1/self.shells_size[i]
-                    vectors_up[i,:]=self.V*norm*vectors_up[i,:]
-            
+                for i in range(0,N-1):
+                    i_shell=i+1 #we start from index 1
+                    for j in range(2):
+                        i_vec=2*i_shell-1+j
+                        if j==0 and self.d1[i_shell]>0:
+                            norm=1/self.d1[i_shell]
+                        if j==1:
+                            norm=1/self.d2[i_shell]
+                        vectors_up[i_vec,:]=self.V*norm*vectors_up[i_vec,:]
+                
             if k>0:
-                for i in range(N):
-                    norm=(self.shells_size[k]/self.shells_size[k-1]-1)*self.shells_size[k-1]/self.shells_size[i+k]
-                    vectors_up[i,:]=self.V*norm*vectors_up[i,:]
-                    
-            gap[k:]+=np.einsum(vectors_up, [0,1], vectors_down, [0,1], F_weight,[1],[0])
+                for i in range(N): #here we don't need to shift indices, since the central site is not considered
+                    for j in range(2):
+                        i_vec=2*i+j
+                        if j==0 and self.d1[i+1]>0:
+                            norm=self.d2[k-1]/self.d1[k+i]
+                        if j==1:
+                            norm=self.d2[k-1]/self.d2[k+i]
+                        vectors_up[i_vec,:]=self.V*norm*vectors_up[i_vec,:]
+                        
+            if k==0:
+                gap+=np.einsum(vectors_up, [0,1], vectors_down, [0,1], F_weight,[1],[0])
+            if k>0:
+                gap[(2*k-1):]+=np.einsum(vectors_up, [0,1], vectors_down, [0,1], F_weight,[1],[0])
 
         return gap
     
@@ -518,7 +540,7 @@ class Caylee_tree:
     
 def main():
     q=2
-    M=8
+    M=100
     T=0.01
     V=1
     mu=0
@@ -539,7 +561,7 @@ def main():
     # HL.BdG_cycle()
     # HL.plot_Delta()
    
-    #HL.plot_local_DoS()
+    HL.plot_local_DoS()
     
 
     

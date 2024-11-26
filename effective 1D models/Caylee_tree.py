@@ -95,7 +95,9 @@ class effective_Caylee2type_HL:
     def make_shells_size(self):
         shells_size=[1,3,2*3,4*3,8*3-3,36]
         d2=[1,3,2*3,4*3,18,33]
-        d1=shells_size-d2
+        d1=[]
+        for i in range(6):
+            d1.append(shells_size[i]-d2[i])
         
         if self.M>5:
             
@@ -109,32 +111,29 @@ class effective_Caylee2type_HL:
         # while len(shells_size)<self.M+2:
         #     shells_size.append(shells_size[-1]*2)
         
-        return shells_size
+        return shells_size, d2, d1
     
     def make_hops(self):
         hops_array=[]
-        hops_array.append([[np.sqrt(self.q)]])
-        
+        hops_array.append([[0,np.sqrt(self.q+1)]])
+        k=1
+        for i in range(self.M-k):
+            hop=np.zeros((2,2))
+            if self.d1[k+i]>0:
+                hop[0,1]=np.sqrt(self.d2[k+i+1]/self.d1[k+i])
+            hop[1,0]=np.sqrt(self.d1[k+i+1]/self.d2[k+i])
+            hop[1,1]=np.sqrt(self.d2[k+i+1]/self.d2[k+i])
+            hops_array.append(hop)
+            
+        #print(hops_array)
         return hops_array
     
     #Fermi function
     def F(self,E):
         return 1/(np.exp((E)/self.T)+1)    
     
-    def effective_H(self,k):
-        
-        #if k==0:
-            
-        #if k==1:
-        
-        if k>1:
-            hops=np.zeros(self.M-k)
-            for i in range(self.M-k):
-                hops[i]=np.sqrt(self.shells_size[k+i+1]/self.shells_size[k+i])
-            #print(hops)
-
-        H=np.diag(hops,k=1)+np.diag(hops,k=-1)
-        return H
+    def effective_H(self,k):   
+        return construct_symmetric_block_matrix(self.hops[k:])
     
     def effective_BdG(self, k,Delta_k):
         H=self.effective_H(k)-self.mu*np.eye(self.M-k+1)
@@ -519,7 +518,7 @@ class Caylee_tree:
     
 def main():
     q=2
-    M=1000
+    M=8
     T=0.01
     V=1
     mu=0
@@ -536,23 +535,12 @@ def main():
    
     #HL.plot_local_DoS()
     
-    #HL=effective_Caylee2type_HL(M, V, T, mu)
+    HL=effective_Caylee2type_HL(M, V, T, mu)
     # HL.BdG_cycle()
     # HL.plot_Delta()
    
     #HL.plot_local_DoS()
     
-    H_0 = np.array([[1]])           # Shape (1, 2)
-    H_1 = np.array([[2]])              # Shape (2, 1)     # Shape (1, 3)
-    H_2 = np.array([[8,7]])
-    H_3 = np.array([[3,4],[5,6]])  
-    H_4 = np.array([[3,4],[5,6]])  
-
-
-    
-    matrices = [H_0, H_1, H_2,H_3,H_4]
-    result = construct_symmetric_block_matrix(matrices)
-    print(result)
 
     
 main()

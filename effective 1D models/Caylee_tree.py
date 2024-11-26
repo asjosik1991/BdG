@@ -38,7 +38,7 @@ class effective_Caylee2type_HL:
     
     def make_shells_size(self):
         shells_size=[1,3,2*3,4*3,8*3-3,36]
-        d=[3,2*3,4*3,18,33]
+        d=[1,3,2*3,4*3,18,33]
         
         if self.M>5:
             

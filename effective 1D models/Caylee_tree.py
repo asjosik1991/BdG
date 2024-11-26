@@ -7,6 +7,60 @@ from numpy import random
 import pickle
 import time
 
+def construct_symmetric_block_matrix(matrices):
+    """
+    Constructs a square symmetric matrix with the specified block structure,
+    accommodating matrices of varying sizes, including 1x1 matrices.
+    
+    Parameters:
+        matrices (list of numpy.ndarray): A list of matrices [H_0, H_1, ..., H_n].
+    
+    Returns:
+        numpy.ndarray: A square symmetric matrix with the specified block structure.
+    """
+    n = len(matrices)
+    
+    # Initialize lists for cumulative row and column sizes
+    row_sizes = []
+    col_sizes = []
+    
+    # Compute block sizes
+    for i in range(n):
+        # For each matrix H_i, append its row and column sizes
+        row_sizes.append(matrices[i].shape[0])
+        col_sizes.append(matrices[i].shape[1])
+    
+    # The size of the square matrix is the sum of all block sizes
+    total_row_size = sum(row_sizes) + matrices[-1].shape[1]
+    total_col_size = sum(col_sizes) + matrices[0].shape[0]
+    
+    # Initialize the square matrix with zeros
+    symmetric_matrix = np.zeros((total_row_size, total_col_size))
+    
+    # Compute cumulative indices for row and column positions
+    row_indices = [0]
+    col_indices = [0]
+    
+    for size in row_sizes:
+        row_indices.append(row_indices[-1] + size)
+    for size in col_sizes:
+        col_indices.append(col_indices[-1] + size)
+    
+    # Place the matrices and their transposes
+    for i in range(n):
+        # Upper subdiagonal block H_i
+        row_start = row_indices[i]
+        row_end = row_indices[i] + matrices[i].shape[0]
+        col_start = col_indices[i] + matrices[0].shape[0]  # Offset by H_0's column size
+        col_end = col_start + matrices[i].shape[1]
+        
+        symmetric_matrix[row_start:row_end, col_start:col_end] = matrices[i]
+        
+        # Lower subdiagonal block H_i.T
+        symmetric_matrix[col_start:col_end, row_start:row_end] = matrices[i].T
+    
+    return symmetric_matrix
+
 def bethe_dos(q,s):
     if abs(s)<2*np.sqrt(q):
         #print("check", abs(s), 2*np.sqrt(q))
@@ -24,7 +78,9 @@ class effective_Caylee2type_HL:
         self.V=V
         self.T=T
         self.mu=mu
-        self.shells_size=self.make_shells_size()
+        self.shells_size, self.d2, self.d1=self.make_shells_size()
+        self.hops_matrices=self.make_hops()
+        
         self.Delta=[]
     
     def local_DoS(self, energy):
@@ -38,13 +94,15 @@ class effective_Caylee2type_HL:
     
     def make_shells_size(self):
         shells_size=[1,3,2*3,4*3,8*3-3,36]
-        d=[1,3,2*3,4*3,18,33]
+        d2=[1,3,2*3,4*3,18,33]
+        d1=shells_size-d2
         
         if self.M>5:
             
             while len(shells_size)<self.M+2:
-                d.append(2*d[-1]-2*d[-4]+d[-5])
-                shells_size.append(d[-1]+d[-5])
+                d2.append(2*d2[-1]-2*d2[-4]+d2[-5])
+                shells_size.append(d2[-1]+d2[-5])
+                d1.append(shells_size[-1]-d2[-1])
         
         #test to reproduce usual Caylee tree
         # shells_size=[1,3]
@@ -53,16 +111,27 @@ class effective_Caylee2type_HL:
         
         return shells_size
     
+    def make_hops(self):
+        hops_array=[]
+        hops_array.append([[np.sqrt(self.q)]])
+        
+        return hops_array
+    
     #Fermi function
     def F(self,E):
         return 1/(np.exp((E)/self.T)+1)    
     
     def effective_H(self,k):
         
-        hops=np.zeros(self.M-k)
-        for i in range(self.M-k):
-            hops[i]=np.sqrt(self.shells_size[k+i+1]/self.shells_size[k+i])
-        #print(hops)
+        #if k==0:
+            
+        #if k==1:
+        
+        if k>1:
+            hops=np.zeros(self.M-k)
+            for i in range(self.M-k):
+                hops[i]=np.sqrt(self.shells_size[k+i+1]/self.shells_size[k+i])
+            #print(hops)
 
         H=np.diag(hops,k=1)+np.diag(hops,k=-1)
         return H
@@ -187,7 +256,7 @@ class effective_Caylee_HL:
                 d.append(2*d[-1]-2*d[-4]+d[-5])
                 shells_size.append(d[-1]+d[-5])
         
-        #test to reproduce usual Caylee tree
+        # ##test to reproduce usual Caylee tree
         # shells_size=[1,3]
         # while len(shells_size)<self.M+2:
         #     shells_size.append(shells_size[-1]*2)
@@ -278,7 +347,7 @@ class effective_Caylee_HL:
     
     def plot_local_DoS(self):
         
-        energies=np.linspace(-3.5, 3.5,100)
+        energies=np.linspace(-3, 3,100)
         fig, ax = plt.subplots(figsize=(9.6,7.2))
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=20)
@@ -428,7 +497,7 @@ class Caylee_tree:
     
     def plot_local_DoS(self):
         
-        energies=np.linspace(-3.5, 3.5,100)
+        energies=np.linspace(-3, 3,100)
         fig, ax = plt.subplots(figsize=(9.6,7.2))
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=20)
@@ -455,23 +524,35 @@ def main():
     V=1
     mu=0
     
-    # CT=Caylee_tree(q, M, V, T, mu)
+    #CT=Caylee_tree(q, M, V, T, mu)
     # # CT.BdG_cycle()
     # # CT.plot_Delta()
    
-    # #CT.plot_local_DoS()
+    #CT.plot_local_DoS()
     
-    # HL=effective_Caylee_HL(M, V, T, mu)
+    #HL=effective_Caylee_HL(M, V, T, mu)
     # # HL.BdG_cycle()
     # # HL.plot_Delta()
    
-    # HL.plot_local_DoS()
+    #HL.plot_local_DoS()
     
-    HL=effective_Caylee2type_HL(M, V, T, mu)
+    #HL=effective_Caylee2type_HL(M, V, T, mu)
     # HL.BdG_cycle()
     # HL.plot_Delta()
    
-    HL.plot_local_DoS()
+    #HL.plot_local_DoS()
+    
+    H_0 = np.array([[1]])           # Shape (1, 2)
+    H_1 = np.array([[2]])              # Shape (2, 1)     # Shape (1, 3)
+    H_2 = np.array([[8,7]])
+    H_3 = np.array([[3,4],[5,6]])  
+    H_4 = np.array([[3,4],[5,6]])  
+
+
+    
+    matrices = [H_0, H_1, H_2,H_3,H_4]
+    result = construct_symmetric_block_matrix(matrices)
+    print(result)
 
     
 main()

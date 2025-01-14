@@ -137,35 +137,39 @@ class effective_Caylee2type_HL:
     
     def make_hops(self):
         
-        hops=[]
-        hops_d=[]
-        hop=np.array([[0,self.q+1]])
-        hops.append(hop)
-        hops_d.append(hop.T/3)
-        k=1
-        for i in range(self.M-k):
-            hop=np.zeros((2,2))
-            hop[0,1]=1
-            hop[1,0]=2*self.d1[k+i+1]/self.shells_size[k+i+1]
-            hop[1,1]=2*self.d2[k+i+1]/self.shells_size[k+i+1]
-            hops.append(hop)
-            
-            hop=np.zeros((2,2))
-            hop[0,1]=2
-            hop[1,0]=self.d1[k+i+1]/self.shells_size[k+i+1]
-            hop[1,1]=self.d2[k+i+1]/self.shells_size[k+i+1]
-            hops_d.append(hop)
-            
-        # hops_array=[]
-        # hops_array.append(np.array([[0,np.sqrt(self.q+1)]]))
+        # hops=[]
+        # hops_d=[]
+        # hop=np.array([[0,self.q+1]])
+        # hops.append(hop)
+        # hops_d.append(hop.T/3)
         # k=1
         # for i in range(self.M-k):
         #     hop=np.zeros((2,2))
-        #     if self.d1[k+i]>0:
-        #         hop[0,1]=np.sqrt(self.d2[k+i+1]/self.d1[k+i])
-        #     hop[1,0]=np.sqrt(self.d1[k+i+1]/self.d2[k+i])
-        #     hop[1,1]=np.sqrt(self.d2[k+i+1]/self.d2[k+i])
-        #     hops_array.append(hop)
+        #     hop[0,1]=1
+        #     hop[1,0]=2*self.d1[k+i+1]/self.shells_size[k+i+1]
+        #     hop[1,1]=2*self.d2[k+i+1]/self.shells_size[k+i+1]
+        #     hops.append(hop)
+            
+        #     hop=np.zeros((2,2))
+        #     hop[0,1]=2
+        #     hop[1,0]=self.d1[k+i+1]/self.shells_size[k+i+1]
+        #     hop[1,1]=self.d2[k+i+1]/self.shells_size[k+i+1]
+        #     hops_d.append(hop)
+        
+        hops_d=[]    
+        hops=[]
+        hop=np.array([[0,np.sqrt(self.q+1)]])
+        hops.append(hop)
+        hops_d.append(hop.T)
+        k=1
+        for i in range(self.M-k):
+            hop=np.zeros((2,2))
+            if self.d1[k+i]>0:
+                hop[0,1]=np.sqrt(1)
+            hop[1,0]=np.sqrt(self.d1[k+i+1]/self.d2[k+i])
+            hop[1,1]=np.sqrt(self.d2[k+i+1]/self.d2[k+i])
+            hops.append(hop)
+            hops_d.append(hop.T)
             
         #print(hops_array)
         return hops, hops_d
@@ -396,7 +400,7 @@ class effective_Caylee_HL:
         plt.xlabel(r'distance from the center',fontsize=20)
         plt.plot(self.Delta)
 
-        plt.title("effective 1 type Caylee tree, q="+str(self.q)+", M="+str(self.M), fontsize=20)
+        plt.title("effective 1 type Caylee tree, M="+str(self.M), fontsize=20)
         #plt.title("Bethe lattice DoS", fontsize=20)
 
         plt.show()
@@ -576,32 +580,36 @@ class Caylee_tree:
     
 def main():
     q=2
-    M=100
-    T=0.01
+    M=60
+    T=0.1
     V=1
     mu=0
     
-    #CT=Caylee_tree(q, M, V, T, mu)
-    # # CT.BdG_cycle()
-    # # CT.plot_Delta()
+    CT=Caylee_tree(q, M, V, T, mu)
+    CT.BdG_cycle()
+    CT.plot_Delta()
+    #print(np.min(CT.Delta))
    
     #CT.plot_local_DoS()
     
-    # HL=effective_Caylee_HL(M, V, T, mu)
-    # H=HL.effective_H(0)
-    # H_test = np.linalg.matrix_power(H,10)
-    # print(np.round(H_test[0,0],4))
-    # # HL.BdG_cycle()
-    # # HL.plot_Delta()
+    HL=effective_Caylee_HL(M, V, T, mu)
+    #H=HL.effective_H(0)
+    # for k in range(18):
+    #     H_test = np.linalg.matrix_power(H,2*k)
+    #     print(np.round(H_test[0,0],4))
+    HL.BdG_cycle()
+    HL.plot_Delta()
    
     #HL.plot_local_DoS()
     
-    HL=effective_Caylee2type_HL(M, V, T, mu)
-    # HL.BdG_cycle()
-    # HL.plot_Delta()
+    # HL=effective_Caylee2type_HL(M, V, T, mu)
+    # # HL.BdG_cycle()
+    # # HL.plot_Delta()
     # H=HL.effective_H(0)
-    # H_test = np.linalg.matrix_power(H,10)
-    # print(np.round(H_test[0,0],4))
-    HL.plot_local_DoS()
-    
+    # for k in range(18):
+    #     H_test = np.linalg.matrix_power(H,2*k)
+    #     print(np.round(H_test[0,0],4))
+    # HL.plot_local_DoS()
+
+
 main()

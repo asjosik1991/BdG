@@ -7,7 +7,7 @@ def main():
 
     p=8
     q=3
-    l=6
+    l=8
     t=1
     V=1
     T=0.01
@@ -34,16 +34,22 @@ def main():
     BdGhypersample.BdG_cycle()
     BdGhypersample.nx_Delta_plot()
 
-    #BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
+    # #BdGhypersample.field_plot(np.round(BdGhypersample.Delta,4))
     BdGhypersample.plot_radial_Delta()
    
-    "test tree graph"
+    "test hyperbolic graph"
     
     hypersample=hbdg.centered_HL(l)
     BdGhypersample=hbdg.HyperBdG(hypersample,V,T,mu)
     BdGhypersample.BdG_cycle()
     BdGhypersample.nx_Delta_plot()
     BdGhypersample.plot_radial_Delta()
+    
+    # H=hypersample.hamiltonian
+    # for k in range(18):
+    #     H_test_old=np.linalg.matrix_power(H,2*k)
+    #     H_test = np.linalg.matrix_power(H,2*(k+1))
+    #     print(np.round(H_test[0,0]/H_test_old[0,0],4), "k=", k)
 
 
 

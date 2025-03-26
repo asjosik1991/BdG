@@ -394,16 +394,19 @@ class effective_Caylee_HL:
     
     def plot_Delta(self):
         fig, ax = plt.subplots(figsize=(9.6,7.2))
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.ylabel(r'$\Delta$',fontsize=20)
-        plt.xlabel(r'distance from the center',fontsize=20)
+        ax.locator_params(nbins=5)
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+        plt.ylabel(r'$\Delta$',fontsize=26)
+        plt.xlabel(r'distance from the center',fontsize=26)
         plt.plot(self.Delta)
 
-        plt.title("effective 1 type Caylee tree, M="+str(self.M), fontsize=20)
+        plt.title("effective Caylee tree", fontsize=32)
         #plt.title("Bethe lattice DoS", fontsize=20)
 
-        plt.show()
+        figname="eff_tree_Delta_q="+str(self.q)+"M="+str(self.M)
+        #plt.show()
+        plt.savefig(figname+".pdf")
         plt.close()
     
     def plot_local_DoS(self):
@@ -544,16 +547,19 @@ class Caylee_tree:
     
     def plot_Delta(self):
         fig, ax = plt.subplots(figsize=(9.6,7.2))
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.ylabel(r'$\Delta$',fontsize=20)
-        plt.xlabel(r'distance from the center',fontsize=20)
+        ax.locator_params(nbins=5)
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+        plt.ylabel(r'$\Delta$',fontsize=26)
+        plt.xlabel(r'distance from the center',fontsize=26)
         plt.plot(self.Delta)
 
-        plt.title("Caylee tree, q="+str(self.q)+", M="+str(self.M), fontsize=20)
+        plt.title("Caylee tree, q="+str(self.q), fontsize=32)
         #plt.title("Bethe lattice DoS", fontsize=20)
 
-        plt.show()
+        figname="tree_Delta_q="+str(self.q)+"M="+str(self.M)
+        #plt.show()
+        plt.savefig(figname+".pdf")
         plt.close()
     
     def plot_local_DoS(self):
@@ -576,29 +582,26 @@ class Caylee_tree:
 
         plt.show()
         plt.close()
-        
+    
     
 def main():
     q=2
-    M=60
+    M=80
     T=0.1
     V=1
     mu=0
     
-    CT=Caylee_tree(q, M, V, T, mu)
-    CT.BdG_cycle()
-    CT.plot_Delta()
+    # CT=Caylee_tree(q, M, V, T, mu)
+    # CT.BdG_cycle()
+    # CT.plot_Delta()
     #print(np.min(CT.Delta))
    
     #CT.plot_local_DoS()
     
     HL=effective_Caylee_HL(M, V, T, mu)
-    #H=HL.effective_H(0)
-    # for k in range(18):
-    #     H_test = np.linalg.matrix_power(H,2*k)
-    #     print(np.round(H_test[0,0],4))
     HL.BdG_cycle()
-    HL.plot_Delta()
+    
+    #HL.plot_Delta()
    
     #HL.plot_local_DoS()
     

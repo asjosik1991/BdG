@@ -432,13 +432,13 @@ class effective_Caylee_HL:
 
 class Caylee_tree:
     
-    def __init__(self,q,M,V,T,mu):
+    def __init__(self,q,M,V,T,mu, Delta=[]):
         self.q=q
         self.M=M
         self.V=V
         self.T=T
         self.mu=mu
-        self.Delta=[]
+        self.Delta=Delta
     
     def kinetic_spectrum(self):
         spectrum=[]
@@ -532,7 +532,10 @@ class Caylee_tree:
     def BdG_cycle(self):
         
         step=0
-        Delta=0.5*np.ones(self.M+1)+0.1*np.random.rand(self.M+1)             
+        if len(self.Delta)==0:
+            Delta=0.5*np.ones(self.M+1)+0.1*np.random.rand(self.M+1)  
+        else:
+            Delta=self.Delta
         while True:
             Delta_next=self.gap_integral(Delta)
             error=np.max(np.abs((Delta-Delta_next)))
@@ -582,37 +585,85 @@ class Caylee_tree:
 
         plt.show()
         plt.close()
+
+def plot_phase_slice(BdG_sample, T_range, Delta_bulkinf=[], bulk=False, edge=True):
+    Delta_bulk=[]
+    Delta_edge=[]
+    for T in T_range:
+        BdG_sample.T=T
+        BdG_sample.BdG_cycle()
+        Delta_bulk.append(BdG_sample.Delta[0])
+        Delta_edge.append(np.mean(BdG_sample.Delta[-1]))
     
+    if bulk:
+        
+        fig, ax = plt.subplots(figsize=(9.6,7.2))
+        ax.locator_params(nbins=5)
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+        plt.ylabel(r'$\Delta$',fontsize=26)
+        plt.xlabel(r'$T$',fontsize=26)
+        plt.plot(T_range,Delta_bulk, label="Center of a finite tree")
+        plt.plot(T_range,Delta_bulkinf, label="Thermodynamic limit")
+        plt.legend(fontsize=26)
     
-def main():
-    q=2
-    M=80
-    T=0.1
-    V=1
-    mu=0
+        plt.title("Bulk of a tree", fontsize=32)
+        figname="Delta_bulk"
+        #plt.show()
+        plt.savefig(figname+".pdf")
+        plt.close()
     
-    # CT=Caylee_tree(q, M, V, T, mu)
-    # CT.BdG_cycle()
-    # CT.plot_Delta()
-    #print(np.min(CT.Delta))
-   
-    #CT.plot_local_DoS()
-    
-    HL=effective_Caylee_HL(M, V, T, mu)
-    HL.BdG_cycle()
-    
-    #HL.plot_Delta()
-   
-    #HL.plot_local_DoS()
-    
-    # HL=effective_Caylee2type_HL(M, V, T, mu)
-    # # HL.BdG_cycle()
-    # # HL.plot_Delta()
-    # H=HL.effective_H(0)
-    # for k in range(18):
-    #     H_test = np.linalg.matrix_power(H,2*k)
-    #     print(np.round(H_test[0,0],4))
-    # HL.plot_local_DoS()
+    if edge:
+        
+        fig, ax = plt.subplots(figsize=(9.6,7.2))
+        ax.locator_params(nbins=5)
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+        plt.ylabel(r'$\Delta$',fontsize=26)
+        plt.xlabel(r'$T$',fontsize=26)
+        plt.plot(T_range,Delta_edge, label='edge')
+        plt.plot(T_range,Delta_bulk, label="bulk")
+        plt.legend(fontsize=26)
 
 
-main()
+        plt.title(r'Cayley tree, $q=2$', fontsize=32)
+    
+        figname="Delta_edge"
+        #plt.show()
+        plt.savefig(figname+".pdf")
+        plt.close()
+
+        
+    
+# def main():
+#     q=15
+#     M=40
+#     T=0.1
+#     V=1
+#     mu=0
+    
+#     CT=Caylee_tree(q, M, V, T, mu)
+#     CT.BdG_cycle()
+#     CT.plot_Delta()
+#     print(np.min(CT.Delta))
+   
+# #     #CT.plot_local_DoS()
+    
+# #     HL=effective_Caylee_HL(M, V, T, mu)
+# #     HL.BdG_cycle()
+    
+#     #HL.plot_Delta()
+   
+#     #HL.plot_local_DoS()
+    
+#     # HL=effective_Caylee2type_HL(M, V, T, mu)
+#     # # HL.BdG_cycle()
+#     # # HL.plot_Delta()
+#     # H=HL.effective_H(0)
+#     # for k in range(18):
+#     #     H_test = np.linalg.matrix_power(H,2*k)
+#     #     print(np.round(H_test[0,0],4))
+#     # HL.plot_local_DoS()
+
+
+# main()

@@ -16,6 +16,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 class centered_HL:
     def __init__(self,l,hopping=1):
     #so far only {8,3}, the construction follow vertex types recursion relation
+        self.type="Hyper_lattice"
         self.l=l
         self.maxt=3
         self.N=0
@@ -120,6 +121,7 @@ class centered_HL:
     
 class Tree_graph:
     def __init__(self,q,l,hopping):
+        self.type="Tree"
         self.q=q
         self.p='infty'
         self.l=l
@@ -211,6 +213,7 @@ class Tree_graph:
 "Class for initial one-particle lattice and corresponding hamiltonian"
 class HyperLattice:
     def __init__(self,p,q,l,hopping, loadfile=False):
+        self.type="Hyper_lattice"
         self.p=p
         self.q=q
         self.l=l
@@ -328,12 +331,12 @@ class HyperBdG():
         self.uniform=uniform #if the system homogeneous
                 
         if len(Delta)==0:
-            self.Delta=np.zeros(self.N)
-            self.initial_Delta=False #it is necessary to obtain non-trivial solution of BdG equation
-            print("no initial Delta for the BdG Hamiltonian")
+            self.Delta=0.5*np.ones(self.N)+0.1*np.random.rand(self.N)  
+            #self.initial_Delta=True #it is necessary to obtain non-trivial solution of BdG equation
+            #print("no initial Delta for the BdG Hamiltonian")
         else:
             self.Delta=Delta
-            self.initial_Delta=True
+        #self.initial_Delta=True
         
         #construct trivial hamiltonian
         self.construct_hamiltonian()
@@ -376,7 +379,7 @@ class HyperBdG():
         step=0
         if not self.uniform:
                 
-            if self.initial_Delta==False:
+            if len(self.Delta)==0:
                 self.Delta=0.5*np.ones(self.N)+0.1*np.random.rand(self.N)             
             while True:
                 Delta_next=self.gap_integral()
@@ -415,22 +418,30 @@ class HyperBdG():
         fig.set_figheight(15)
         fig.set_figwidth(15)
         nx.draw(G,pos=nx.shell_layout(G,nlist=self.lattice_sample.shell_list,rotate=0),node_color=self.Delta, node_size=900, node_shape='.',cmap=colormap)
-        
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+        rc('text', usetex=True)
         sm = plt.cm.ScalarMappable(cmap=colormap, norm=plt.Normalize(vmin=min(self.Delta), vmax=1.2*max(self.Delta)))
-        title='Number of shells='+str(self.lattice_sample.l)
-        plt.title(title,fontsize=34, y=0.95)
+        if self.lattice_sample.type=="Tree":
+            title='Caylee tree, '+str(self.lattice_sample.l)+' shells'
+        if self.lattice_sample.type=="Hyper_lattice":
+            title='\{8,3\} lattice, '+str(self.lattice_sample.l)+' shells'
+
+        plt.title(title,fontsize=44, y=0.96)
         
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.3)  # Adjust size and padding as needed
         cbar=fig.colorbar(sm, cax=cax)
-        cbar.ax.tick_params(labelsize=30)
+        cbar.ax.tick_params(labelsize=36)
         tick_locator = ticker.MaxNLocator(nbins=5)
         cbar.locator = tick_locator
-        cbar.set_label("$\Delta$", fontsize=42, rotation=0)
+        cbar.set_label("$\Delta$", fontsize=40, rotation=0)
         cbar.update_ticks()
         #plt.tight_layout(rect=[0, 0, 1, 0.95])
+        figname="hyperlat_ns="+str(self.lattice_sample.l)
+        #plt.show()
+        plt.savefig(figname+".pdf")
+        plt.close()
 
-        plt.show()
     
     def field_plot(self, field, fieldname=r'$\Delta$',title='', edges=True):
         
@@ -473,7 +484,7 @@ class HyperBdG():
      
         title='$\{'+tstr+'\}$'+'  l='+str(self.lattice_sample.l)
         plt.title(title,fontsize=24)
-        figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.png".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
+        figname=fieldname+"_V={}_T={}_mu={}_hyperbolic_p={}_q={}_l={}.pdf".format(self.V,self.T,self.mu, self.lattice_sample.p, self.lattice_sample.q, self.lattice_sample.l)
         plt.show()
         #plt.savefig(figname)
         #plt.close()
@@ -493,8 +504,7 @@ class HyperBdG():
         # plt.savefig("spectrum.png")
         # plt.close()
     
-    def plot_radial_Delta(self):
-        
+    def get_radial_Delta(self):
         radial_Delta=[]
         radial_sigma=[]
         #print(self.lattice_sample.shell_list)
@@ -511,21 +521,82 @@ class HyperBdG():
             radial_Delta.append(D)
             radial_sigma.append(sigma)
         
+        return radial_Delta, radial_sigma
+    
+    def plot_radial_Delta(self):
+        
+        radial_Delta, radial_sigma=self.get_radial_Delta()
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+        rc('text', usetex=True)
         fig, ax = plt.subplots(figsize=(9.6,7.2))
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.ylabel(r'$\Delta$',fontsize=20)
-        plt.xlabel(r'distance from the center',fontsize=20)
+        ax.locator_params(nbins=5)
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+        plt.ylabel(r'$\Delta$',fontsize=26)
+        plt.xlabel(r'distance from the center',fontsize=26)
         plt.plot(radial_Delta, label=r"$\Delta$")
         plt.plot(radial_sigma, label=r"$\sigma$")
-        plt.legend(fontsize=20)
-        plt.title(r"Radial $\Delta$ shells number="+str(self.lattice_sample.l), fontsize=20)
+        plt.legend(fontsize=26)
+        plt.title(r"Radial $\Delta$, "+str(self.lattice_sample.l)+" shells", fontsize=32)
         #plt.title("Bethe lattice DoS", fontsize=20)
-
-        plt.show()
+        
+        figname="Radial_Delta_sn="+str(self.lattice_sample.l)
+        #plt.show()
+        plt.savefig(figname+".pdf")
         plt.close()
 
+def plot_Deltas(Delta1,Delta2,Delta3):
+        plt.rc('font', family = 'serif', serif = 'cmr10')
+        rc('text', usetex=True)
+        fig, ax = plt.subplots(figsize=(9.6,7.2))
+        ax.locator_params(nbins=5)
+        plt.xticks(fontsize=24)
+        plt.yticks(fontsize=24)
+        plt.ylabel(r'$\Delta$',fontsize=26)
+        plt.xlabel(r'distance from the center',fontsize=26)
+        plt.plot(Delta1, label="Caylee tree")
+        plt.plot(Delta2, label=r"$\{8,3\}$ lattice")
+        plt.plot(Delta3, label=r"effective $\{8,3\}$ lattice")
 
+        plt.legend(fontsize=26)
+        plt.title(r"Radial $\Delta$", fontsize=32)
+        #plt.title("Bethe lattice DoS", fontsize=20)
+        
+        figname="Radial_Delta"
+        #plt.show()
+        plt.savefig(figname+".pdf")
+        plt.close()
+        
+def mu_slice(BdG_sample, T_range):
+    Delta_bulk=[]
+    Delta_edge=[]
+    for T in T_range:
+        BdG_sample.T=T
+        BdG_sample.BdG_cycle()
+        Delta_radial, radial_sigma=BdG_sample.get_radial_Delta()
+        Delta_bulk.append(Delta_radial[0])
+        Delta_edge.append(np.mean(Delta_radial[-1]))
+    
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+    fig, ax = plt.subplots(figsize=(9.6,7.2))
+    ax.locator_params(nbins=5)
+    plt.xticks(fontsize=24)
+    plt.yticks(fontsize=24)
+    plt.ylabel(r'$\Delta$',fontsize=26)
+    plt.xlabel(r'$T$',fontsize=26)
+    plt.plot(T_range,Delta_edge, label='edge')
+    plt.plot(T_range,Delta_bulk, label="bulk")
+    plt.legend(fontsize=26)
+
+
+    plt.title(r"$\{8,3\}$ lattice", fontsize=32)
+
+    figname="Delta_edge"
+    #plt.show()
+    plt.savefig(figname+".pdf")
+    plt.close()
+    
 
 #create general array of Delta depending on different parameters for a given sample
 def calculate_hyperdiagram(lattice_sample, V_array, mu_array, T_array, uniform=False):
@@ -593,9 +664,9 @@ def plot_hyperdiagram(lattice_sample, diagram):
         x=diagram['mu']
         y=diagram['T']
         Deltas=diagram['Deltas']
-        meanD=np.zeros((len(x),len(y)))      
-        edgeD=np.zeros((len(x),len(y)))
-        bulkD=np.zeros((len(x),len(y)))  
+        meanD=np.zeros((len(y),len(x)))      
+        edgeD=np.zeros((len(y),len(x)))
+        bulkD=np.zeros((len(y),len(x)))  
         for i in range(len(y)):
             for j in range(len(x)):
                 Delta=Deltas[(V,y[i],x[j])]

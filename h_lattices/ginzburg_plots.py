@@ -202,15 +202,18 @@ def plot_slice_phase_diagram():   #Fig.3
     CDelta_edge=[]
     
     hypersample=hbdg.centered_HL(l)
-    T_array=np.linspace(0.01,0.2,60)
+    T_array=np.linspace(0.01,0.2,100)
+    r_CDelta=[]
+    h_Delta=[]
     for T in T_array:
-        CT=tree.Caylee_tree(q, l, V, T, mu)
+        CT=tree.Caylee_tree(q, l, V, T, mu, Delta=r_CDelta)
         CT.BdG_cycle()
         r_CDelta=CT.Delta
         
-        h_sample=hbdg.HyperBdG(hypersample,V,T,mu)
+        h_sample=hbdg.HyperBdG(hypersample,V,T,mu, Delta=h_Delta)
         h_sample.BdG_cycle()
         r_Delta, r_sigma=h_sample.get_radial_Delta()
+        h_Delta=h_sample.Delta
         
         Delta_bulk.append(r_Delta[0])
         Delta_edge.append(r_Delta[-1])
@@ -350,16 +353,16 @@ def plot_profile_on_effective_Cayley_tree(): #Fig.5
     "Plotting"
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
-    fig, ax = plt.subplots(figsize=(9,6.75))
+    fig, ax = plt.subplots(figsize=(3.4,2.5),dpi=1000,layout='constrained')
     ax.locator_params(nbins=5)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.xticks(fontsize=24)
-    plt.yticks(fontsize=24)
-    plt.ylabel(r'$\Delta$',fontsize=26)
-    plt.xlabel(r'Distance from the center',fontsize=26)
-    plt.title(r"Effective Cayley tree", fontsize=32, y=1.02)
-
-    plt.plot(CT.Delta, linewidth=1.9,color='teal')
+    plt.xticks(fontsize=8)
+    plt.yticks(fontsize=8)
+    plt.ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    plt.xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    plt.title(r"Effective Cayley tree", fontsize=12,y=1.02)
+    plt.xlim(xmax=l+2)
+    plt.plot(CT.Delta, linewidth=1.1,color='teal')
     
     
     #plt.show()
@@ -392,19 +395,19 @@ def plot_comparison_profiles(): #Fig. 6
     "Plotting"
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
-    fig, ax = plt.subplots(figsize=(9,6.75))
+    fig, ax = plt.subplots(figsize=(3.4,2.5),dpi=1000,layout='constrained')
     ax.locator_params(nbins=5)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.xticks(fontsize=24)
-    plt.yticks(fontsize=24)
-    plt.ylabel(r'$\Delta$',fontsize=26)
-    plt.xlabel(r'Distance from the center',fontsize=26)
-    plt.title(r"Radial $\Delta$", fontsize=32, y=1.02)
+    plt.xticks(fontsize=8)
+    plt.yticks(fontsize=8)
+    plt.ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    plt.xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    plt.title(r"Radial $\Delta$", fontsize=12,y=1.02)
     
-    plt.plot(r_Delta, label='\{8,3\} lattice', linewidth=1.9,color='royalblue')
-    plt.plot(effCT.Delta, linewidth=1.9, label="effective Cayley tree", color='teal')
-    plt.plot(CT.Delta, linewidth=1.9, label="Cayley tree", color='slategray')
-    plt.legend(fontsize=22)
+    plt.plot(r_Delta, label='\{8,3\} lattice', linewidth=1.1,color='royalblue')
+    plt.plot(effCT.Delta, linewidth=1.1, label="effective Cayley tree", color='teal')
+    plt.plot(CT.Delta, linewidth=1.1, label="Cayley tree", color='slategray')
+    plt.legend(fontsize=8)
     
     #plt.show()
     filename="Radial_Deltas.pdf"
@@ -451,38 +454,39 @@ def compare_effective_trees():       #Fig.7
     
     
     "Plotting"
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6.5), sharex=True, layout='constrained')
-    fig.get_layout_engine().set(w_pad=10 / 72, h_pad=0 / 72, hspace=0, wspace=0)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2.5),dpi=1000, sharex=True, sharey=True, layout='constrained')
+    fig.get_layout_engine().set(w_pad=1/ 72, h_pad=0 / 72, hspace=0, wspace=0)
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
-    plt.suptitle(r"Radial $\Delta$", fontsize=32, y=1.03)
 
     ax1.locator_params(nbins=5)
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax1.tick_params(labelsize=24)
-    ax1.set_ylabel(r'$\Delta$',fontsize=26)
-    ax1.set_xlabel(r'Distance from the center',fontsize=26)
-    ax1.plot(r_Delta1, label='\{8,3\} lattice', linewidth=1.9,color='royalblue')
-    ax1.plot(r_sigma1, label="{\{8,3\} lattice, $\sigma$", linewidth=1.9,color='coral')
-    ax1.plot(effCT1.Delta, linewidth=1.9, label="effective Cayley tree", color='teal')
-    ax1.plot(CT1.Delta, linewidth=1.9, label="Cayley tree", color='slategray')
-    ax1.legend(fontsize=22)
-    ax1.set_box_aspect(1)
+    ax1.tick_params(labelsize=8)
+    ax1.set_ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    ax1.set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    ax1.plot(r_Delta1, label=r'$\bar\Delta$', linewidth=1.1,color='royalblue')
+    ax1.plot(r_sigma1, label=r"$\sigma$", linewidth=1.1,color='coral')
+    ax1.plot(effCT1.Delta, linewidth=1.1, label="effective Cayley tree", color='teal')
+    ax1.plot(CT1.Delta, linewidth=1.1, label="Cayley tree", color='slategray')
+    ax1.legend(fontsize=8)
+    ax1.set_title(r"a)  \{8,3\} lattice, $\mu=2$",fontsize=10)
+    #ax1.set_box_aspect(1)
     
     ax2.locator_params(nbins=5)
     ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax2.tick_params(labelsize=24)
+    ax2.tick_params(labelsize=8)
     #ax2.set_ylabel(r'$\Delta$',fontsize=26)
-    ax2.set_xlabel(r'Distance from the center',fontsize=26)
-    ax2.plot(r_Delta2, label='\{7,3\} lattice', linewidth=1.9,color='royalblue')
-    ax2.plot(r_sigma2, label="{\{7,3\} lattice, $\sigma$", linewidth=1.9,color='coral')
-    ax2.plot(effCT2.Delta, linewidth=1.9, label="effective Cayley tree", color='teal')
-    ax2.plot(CT2.Delta, linewidth=1.9, label="Cayley tree", color='slategray')
-    ax2.legend(fontsize=22)
-    ax2.set_box_aspect(1)
+    ax2.set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    ax2.plot(r_Delta2, label='\{7,3\} lattice', linewidth=1.1,color='royalblue')
+    ax2.plot(r_sigma2, label=r"\{7,3\} lattice, $\sigma$", linewidth=1.1,color='coral')
+    ax2.plot(effCT2.Delta, linewidth=1.1, label="effective Cayley tree", color='teal')
+    ax2.plot(CT2.Delta, linewidth=1.1, label="Cayley tree", color='slategray')
+    #ax2.legend(fontsize=8)
+    ax2.set_title(r"b)  \{7,3\} lattice, $\mu=0$",fontsize=10)
+    #ax2.set_box_aspect(1)
     
-    ax1.text(0.05,1.05,'a)', transform=ax1.transAxes, fontsize=28, fontstyle='oblique')
-    ax2.text(0.05,1.05,'b)', transform=ax2.transAxes, fontsize=28, fontstyle='oblique')
+    # ax1.text(0,1.03,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
+    # ax2.text(0,1.03,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
 
     #plt.show()
     filename="effective_model_different_cases.pdf"
@@ -494,11 +498,11 @@ def compare_effective_trees():       #Fig.7
 def main():
     #plot_DoS_phasediag()                       #Fig.1
     #plot_hyper_lattices()                      #Fig.2
-    plot_slice_phase_diagram()                 #Fig.3
-    plot_various_M()                           #Fig.4
+    #plot_slice_phase_diagram()                 #Fig.3
+    #plot_various_M()                           #Fig.4
     #plot_profile_on_effective_Cayley_tree()    #Fig.5
     #plot_comparison_profiles()                 #Fig.6
-    #compare_effective_trees()                  #Fig.7
+    compare_effective_trees()                  #Fig.7
 
 
 main()

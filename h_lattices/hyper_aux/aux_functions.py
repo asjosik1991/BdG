@@ -21,7 +21,7 @@ def bethe_dos(q,s):
         #print("check2", abs(s), 2*np.sqrt(q))
         return 0
 
-def aprx_hyp_dos(bs, s, eps=10**(-4)): #data can be taken from arXiv:2304.02382
+def aprx_hyp_dos(bs, s, eps=10**(-7)): #data can be taken from arXiv:2304.02382
     
     z=s-1j*eps
     if np.imag(np.sqrt(z**2-4*bs[0]))<0:
@@ -81,12 +81,14 @@ def Delta_muslice(T_array):
         Delta_seed=Delta
     
     return Deltas
-    
+
 
 def plot_DoS(dos, energy_range):
     dos_array=[]
+    print(energy_range)
     for s in energy_range:
         dos_array.append(dos(s))
+        #print(dos(s))
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
     fig, ax = plt.subplots(figsize=(9.6,7.2))
@@ -99,8 +101,8 @@ def plot_DoS(dos, energy_range):
 
     plt.title("\{8,3\} lattice DoS", fontsize=32)
     #plt.title("Bethe lattice DoS", fontsize=20)
-    #plt.show()
-    plt.savefig("dos.pdf")
+    plt.show()
+    #plt.savefig("dos.pdf")
     plt.close()
     
 #create general array of Delta depending on different parameters for a given system
@@ -147,8 +149,8 @@ def plot_exactdiagram(diagram):
 
 
         plt.imshow(field, vmin=field.min(), vmax=field.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
-        cbar=plt.colorbar()
-        cbar.set_label(legend, fontsize=26, rotation=0, labelpad=-35, y=1.1)
+        cbar=plt.colorbar(location="top", shrink=0.5)
+        cbar.set_label(legend, fontsize=26, rotation=0)
         cbar.ax.tick_params(labelsize=24)
         tick_locator = ticker.MaxNLocator(nbins=5)
         cbar.locator = tick_locator

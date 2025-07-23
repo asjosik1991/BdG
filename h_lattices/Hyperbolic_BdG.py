@@ -12,6 +12,51 @@ import pickle
 import time
 import math
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from hypertiling import HyperbolicGraph, GraphKernels, HyperbolicTiling
+from hypertiling.graphics.plot import plot_tiling
+from hypertiling.kernel.GRG_util import plot_graph
+
+class centered_HL_hypertiling:
+    #build adjacency matrix via hypertyling
+    def __init__(self,p,q,l,hopping=1):
+        self.type="Hyper_lattice"
+        self.l=l
+        self.p=p
+        self.q=q
+        self.hopping=hopping
+        self.hamiltonian, self.graph=self.make_lattice()
+        self.N=self.graph.number_of_nodes()
+        #print(self.hamiltonian)
+        self.shell_list=self.make_shell_list()
+        #print("shell_list", self.shell_list)
+
+    
+    def make_lattice(self):
+        G = HyperbolicGraph(self.q, self.p, self.l+1, kernel = "GRGS")
+        nbrs = G.get_nbrs_list()  # get neighbors
+        graph = nx.Graph()
+
+        for y, row in enumerate(nbrs):
+            for index in row:
+                if index >= len(nbrs):
+                    print(f"Skip: {y} -> {index}")
+                    continue
+                graph.add_edge(y, index)
+        
+        H = nx.to_numpy_array(graph)
+    
+        return self.hopping*H, graph
+    
+    def make_shell_list(self):
+        dist= nx.single_source_shortest_path_length(self.graph, 0)
+        print("length", dist)
+
+        layers = [[] for _ in range(max(dist.values()) + 1)]
+        for node, d in dist.items():
+            layers[d].append(node)
+    
+        return layers
+    
 
 class centered_HL:
     def __init__(self,l,hopping=1):

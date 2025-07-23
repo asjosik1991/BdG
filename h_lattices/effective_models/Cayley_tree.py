@@ -307,21 +307,40 @@ class effective_Caylee_HL:
             rho+=np.imag(vectors[0,i]*np.conj(vectors[0,i])/(energy -spectra[i]-1j*eps))         
         return rho/np.pi
     
+    def get_value(self, S, i):
+        try:
+            return S[i]
+        except IndexError:
+            return 0
+    
     def make_shells_size(self):
-        shells_size=[1,3,2*3,4*3,8*3-3,36]
-        d=[3,2*3,4*3,18,33]
         
-        if self.M>5:
+        if self.p==8 and self.q==2:
+            print("p=8")
+            shells_size=[1,3,2*3,4*3,8*3-3,36]
+            d=[3,2*3,4*3,18,33]
+            
+            if self.M>5:
+                
+                while len(shells_size)<self.M+2:
+                    d.append(2*d[-1]-2*d[-4]+d[-5])
+                    shells_size.append(d[-1]+d[-5])
+        
+        if self.p==7 and self.q==2:
+            print("p=7")
+            shells_size=[1,3]
+            d=[3]
             
             while len(shells_size)<self.M+2:
-                d.append(2*d[-1]-2*d[-4]+d[-5])
-                shells_size.append(d[-1]+d[-5])
-        
+                d.append(2*self.get_value(d,-1)-2*self.get_value(d,-3)+2*self.get_value(d,-4)-2*self.get_value(d,-6)+self.get_value(d,-7))
+                shells_size.append(self.get_value(d,-1)+2*self.get_value(d,-4)+self.get_value(d,-7))
+    
         # ##test to reproduce usual Caylee tree
         # shells_size=[1,3]
         # while len(shells_size)<self.M+2:
         #     shells_size.append(shells_size[-1]*2)
         
+        print("shells_size", shells_size)
         return shells_size
     
     #Fermi function
@@ -333,8 +352,8 @@ class effective_Caylee_HL:
         hops=np.zeros(self.M-k)
         for i in range(self.M-k):
             hops[i]=np.sqrt(self.shells_size[k+i+1]/self.shells_size[k+i])
-        #print(hops)
-
+        
+        #print("effective tree", k,hops)
         H=np.diag(hops,k=1)+np.diag(hops,k=-1)
         return H
     
@@ -481,6 +500,7 @@ class Caylee_tree:
             H=np.diag(hops,k=1)+np.diag(hops,k=-1)
         else:
             H=np.diag(hops,k=1)+np.diag(hops,k=-1)
+        #print("Cayley tree", k, hops)
         return H
     
     def effective_BdG(self, k,Delta_k):
@@ -561,9 +581,9 @@ class Caylee_tree:
         #plt.title("Bethe lattice DoS", fontsize=20)
 
         figname="tree_Delta_q="+str(self.q)+"M="+str(self.M)
-        #plt.show()
-        plt.savefig(figname+".pdf")
-        plt.close()
+        plt.show()
+        #plt.savefig(figname+".pdf")
+        #plt.close()
     
     def plot_local_DoS(self):
         
@@ -635,35 +655,35 @@ def plot_phase_slice(BdG_sample, T_range, Delta_bulkinf=[], bulk=False, edge=Tru
 
         
     
-# def main():
-#     q=15
-#     M=40
-#     T=0.1
-#     V=1
-#     mu=0
+def main():
+    q=2
+    M=100
+    T=0.01
+    V=2
+    mu=2.8
     
-#     CT=Caylee_tree(q, M, V, T, mu)
-#     CT.BdG_cycle()
-#     CT.plot_Delta()
-#     print(np.min(CT.Delta))
+    CT=Caylee_tree(q, M, V, T, mu)
+    CT.BdG_cycle()
+    CT.plot_Delta()
+    print(np.min(CT.Delta))
    
-# #     #CT.plot_local_DoS()
+#     #CT.plot_local_DoS()
     
-# #     HL=effective_Caylee_HL(M, V, T, mu)
-# #     HL.BdG_cycle()
+#     HL=effective_Caylee_HL(M, V, T, mu)
+#     HL.BdG_cycle()
     
-#     #HL.plot_Delta()
+    #HL.plot_Delta()
    
-#     #HL.plot_local_DoS()
+    #HL.plot_local_DoS()
     
-#     # HL=effective_Caylee2type_HL(M, V, T, mu)
-#     # # HL.BdG_cycle()
-#     # # HL.plot_Delta()
-#     # H=HL.effective_H(0)
-#     # for k in range(18):
-#     #     H_test = np.linalg.matrix_power(H,2*k)
-#     #     print(np.round(H_test[0,0],4))
-#     # HL.plot_local_DoS()
+    # HL=effective_Caylee2type_HL(M, V, T, mu)
+    # # HL.BdG_cycle()
+    # # HL.plot_Delta()
+    # H=HL.effective_H(0)
+    # for k in range(18):
+    #     H_test = np.linalg.matrix_power(H,2*k)
+    #     print(np.round(H_test[0,0],4))
+    # HL.plot_local_DoS()
 
 
-# main()
+#main()

@@ -414,7 +414,7 @@ def plot_comparison_profiles(): #Fig. 6
     
     return
 
-def compare_effective_trees():       #Fig.3
+def compare_effective_trees():       #Fig.7
 
     "Calculation"
     q=2
@@ -493,13 +493,13 @@ def compare_effective_trees():       #Fig.3
     return 
 
 def main():
-    #plot_DoS_phasediag()
-    #plot_hyper_lattices()
-    #plot_slice_phase_diagram()
-    #plot_profile_on_effective_Cayley_tree()
-    #plot_comparison_profiles()
-    #plot_various_M()
-    compare_effective_trees()    
+    #plot_DoS_phasediag()                       #Fig.1
+    #plot_hyper_lattices()                      #Fig.2
+    #plot_slice_phase_diagram()                 #Fig.3
+    #plot_profile_on_effective_Cayley_tree()    #Fig.4
+    plot_comparison_profiles()                 #Fig.5
+    #plot_various_M()                           #Fig.6
+    #compare_effective_trees()                  #Fig.7
 
 
 main()

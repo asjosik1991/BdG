@@ -189,7 +189,7 @@ def plot_hyper_lattices():    #Fig.2
     plt.savefig(filename)
     plt.close()
 
-def plot_slice_phase_diagram():   #Fig.4
+def plot_slice_phase_diagram():   #Fig.3
     "Calculation"
     q=2
     p=8
@@ -202,7 +202,7 @@ def plot_slice_phase_diagram():   #Fig.4
     CDelta_edge=[]
     
     hypersample=hbdg.centered_HL(l)
-    T_array=np.linspace(0.01,0.21,60)
+    T_array=np.linspace(0.01,0.2,60)
     for T in T_array:
         CT=tree.Caylee_tree(q, l, V, T, mu)
         CT.BdG_cycle()
@@ -221,27 +221,27 @@ def plot_slice_phase_diagram():   #Fig.4
     "Plotting"
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
-    fig, ax = plt.subplots(figsize=(9,6.75))
+    fig, ax = plt.subplots(figsize=(3.4,2.5),dpi=1000,layout='constrained')
     ax.locator_params(nbins=5)
-    plt.xticks(fontsize=24)
-    plt.yticks(fontsize=24)
-    plt.ylabel(r'$\Delta$',fontsize=26)
-    plt.xlabel(r'$T$',fontsize=26)
-    plt.plot(T_array,Delta_edge, label='\{8,3\} lattice, edge', linewidth=1.9,color='royalblue')
-    plt.plot(T_array,Delta_bulk, label="\{8,3\} lattice, center", linewidth=1.9,color='firebrick')
-    plt.plot(T_array,CDelta_edge, label='Cayley tree, edge', linewidth=1.9,color='slategray')
-    plt.plot(T_array,CDelta_bulk, label="Cayley tree, center", linewidth=1.9,color='orchid')
-    plt.legend(fontsize=22)
+    ax.set_aspect('auto')
+    plt.xticks(fontsize=8)
+    plt.yticks(fontsize=8)
+    plt.ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    plt.xlabel(r'$T$',fontsize=8,labelpad=1)
+    plt.plot(T_array,Delta_edge, label='\{8,3\} lattice, edge', linewidth=1.1,color='royalblue')
+    plt.plot(T_array,Delta_bulk, label="\{8,3\} lattice, center", linewidth=1.1,color='firebrick')
+    plt.plot(T_array,CDelta_edge, label='Cayley tree, edge', linewidth=1.1,color='slategray')
+    plt.plot(T_array,CDelta_bulk, label="Cayley tree, center", linewidth=1.1,color='orchid')
+    plt.legend(fontsize=8)
 
-
-    plt.title(r"Slice of the phase diagram", fontsize=32, y=1.02)
+    plt.title(r"Slice of the phase diagram", fontsize=12, y=1.02)
 
     #plt.show()
     filename="mu_slice_hyplat_tree.pdf"
     plt.savefig(filename)
     plt.close()
 
-def plot_various_M():       #Fig.3
+def plot_various_M():       #Fig.4
 
     "Calculation"
     q=2
@@ -249,8 +249,8 @@ def plot_various_M():       #Fig.3
     T=0.01
     V=1
     mu=0
-    #l_array=np.array([4,5,6,7,8,9,10,11])
-    l_array=np.array([4,5,6])
+    l_array=np.array([4,5,6,7,8,9,10,11])
+    #l_array=np.array([4,5,6,7])
 
     Delta_bulk1=[]
     Delta_edge1=[]
@@ -296,44 +296,43 @@ def plot_various_M():       #Fig.3
     
     
     "Plotting"
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6.5), sharex=True, layout='constrained')
-    fig.get_layout_engine().set(w_pad=10 / 72, h_pad=0 / 72, hspace=0, wspace=0)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2.5),dpi=1000, sharex=True, sharey=True, layout='constrained')
+    fig.get_layout_engine().set(w_pad=0 / 72, h_pad=0 / 72, hspace=0, wspace=0)
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
-    plt.suptitle(r"Edge and center $\Delta$", fontsize=32, y=1.05)
 
     ax1.locator_params(nbins=5)
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax1.tick_params(labelsize=24)
-    ax1.set_ylabel(r'$\Delta$',fontsize=26)
-    ax1.set_xlabel(r'$M$',fontsize=26)
-    ax1.plot(l_array,Delta_edge1, label='\{8,3\} lattice, edge', linewidth=1.9,color='royalblue')
-    ax1.plot(l_array,Delta_bulk1, label="\{8,3\} lattice, center", linewidth=1.9,color='firebrick')
-    ax1.plot(l_array,CDelta_edge1, label='Cayley tree, edge', linewidth=1.9,color='slategray')
-    ax1.plot(l_array,CDelta_bulk1, label="Cayley tree, center", linewidth=1.9,color='orchid')
-    ax1.legend(fontsize=22)
-    ax1.set_box_aspect(1)
+    ax1.tick_params(labelsize=8)
+    ax1.set_ylabel(r'$\Delta$',fontsize=8,labelpad=0)
+    ax1.set_xlabel(r'$M$',fontsize=8,labelpad=0)
+    ax1.plot(l_array,Delta_edge1, label='\{8,3\} lattice, edge', linewidth=1.1,color='royalblue')
+    ax1.plot(l_array,Delta_bulk1, label="\{8,3\} lattice, center", linewidth=1.1,color='firebrick')
+    ax1.plot(l_array,CDelta_edge1, label='Cayley tree, edge', linewidth=1.1,color='slategray')
+    ax1.plot(l_array,CDelta_bulk1, label="Cayley tree, center", linewidth=1.1,color='orchid')
+    #ax1.legend(fontsize=12)
+    #ax1.set_box_aspect(1)
     
     ax2.locator_params(nbins=5)
     ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax2.tick_params(labelsize=24)
+    ax2.tick_params(labelsize=8)
     #ax2.set_ylabel(r'$\Delta$',fontsize=26)
-    ax2.set_xlabel(r'$M$',fontsize=26)
-    ax2.plot(l_array,Delta_edge2, label='\{8,3\} lattice, edge', linewidth=1.9,color='royalblue')
-    ax2.plot(l_array,Delta_bulk2, label="\{8,3\} lattice, center", linewidth=1.9,color='firebrick')
-    ax2.plot(l_array,CDelta_edge2, label='Cayley tree, edge', linewidth=1.9,color='slategray')
-    ax2.plot(l_array,CDelta_bulk2, label="Cayley tree, center", linewidth=1.9,color='orchid')
-    #ax2.legend(fontsize=22)
-    ax2.set_box_aspect(1)
+    ax2.set_xlabel(r'$M$',fontsize=8,labelpad=1)
+    ax2.plot(l_array,Delta_edge2, label='\{8,3\} lattice, edge', linewidth=1.1,color='royalblue')
+    ax2.plot(l_array,Delta_bulk2, label="\{8,3\} lattice, center", linewidth=1.1,color='firebrick')
+    ax2.plot(l_array,CDelta_edge2, label='Cayley tree, edge', linewidth=1.1,color='slategray')
+    ax2.plot(l_array,CDelta_bulk2, label="Cayley tree, center", linewidth=1.1,color='orchid')
+    ax2.legend(fontsize=8)
+    #ax2.set_box_aspect(1)
     
-    ax1.text(-0.1,1,'a)', transform=ax1.transAxes, fontsize=28, fontstyle='oblique')
-    ax2.text(-0.1,1,'b)', transform=ax2.transAxes, fontsize=28, fontstyle='oblique')
+    ax1.text(0,1.03,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
+    ax2.text(0,1.03,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
 
-    #plt.title(r"Slice of the phase diagram", fontsize=32, y=1.02)
+    plt.suptitle(r"Edge and center $\Delta$", fontsize=12)
 
     #plt.show()
     filename="various_M.pdf"
-    plt.savefig(filename,bbox_inches='tight')
+    plt.savefig(filename)
     plt.close()
     
     return 
@@ -487,7 +486,7 @@ def compare_effective_trees():       #Fig.7
 
     #plt.show()
     filename="effective_model_different_cases.pdf"
-    plt.savefig(filename,bbox_inches='tight')
+    plt.savefig(filename)
     plt.close()
     
     return 
@@ -495,10 +494,10 @@ def compare_effective_trees():       #Fig.7
 def main():
     #plot_DoS_phasediag()                       #Fig.1
     #plot_hyper_lattices()                      #Fig.2
-    #plot_slice_phase_diagram()                 #Fig.3
-    #plot_profile_on_effective_Cayley_tree()    #Fig.4
-    plot_comparison_profiles()                 #Fig.5
-    #plot_various_M()                           #Fig.6
+    plot_slice_phase_diagram()                 #Fig.3
+    plot_various_M()                           #Fig.4
+    #plot_profile_on_effective_Cayley_tree()    #Fig.5
+    #plot_comparison_profiles()                 #Fig.6
     #compare_effective_trees()                  #Fig.7
 
 

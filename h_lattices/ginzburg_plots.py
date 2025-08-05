@@ -48,37 +48,37 @@ def plot_DoS_phasediag():     #Fig.1
     field=Delta
     
     "Plots"
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 6), sharex=True, layout='constrained')
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4, 1.9), dpi=1000, sharex=True, layout='constrained')
     fig.get_layout_engine().set(w_pad=0 / 72, h_pad=0 / 72, hspace=0, wspace=0)
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
     # plt.xticks(fontsize=24)
     # plt.yticks(fontsize=24)
     
-    ax1.plot(energy_range, dos_array,linewidth=1.9,color='royalblue')
+    ax1.plot(energy_range, dos_array,linewidth=1.1,color='royalblue')
     ax1.locator_params(nbins=5)
-    ax1.set_xlabel(r'$s$', fontsize=22)
-    ax1.set_ylabel(r'$\rho(s)$', fontsize=22)
-    ax1.tick_params(labelsize=18)
+    ax1.set_xlabel(r'$s$', fontsize=8,labelpad=0)
+    ax1.set_ylabel(r'$\rho(s)$', fontsize=8,labelpad=3)
+    ax1.tick_params(labelsize=6)
     ax1.set_box_aspect(1)
-    ax1.set_title("\{8,3\} lattice, DoS", fontsize=26, y=1.02)
+    ax1.set_title("DoS", fontsize=10)
     
     pcm=ax2.imshow(field, vmin=field.min(), vmax=field.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
     ax2.locator_params(nbins=5)
-    ax2.set_xlabel(r'$\mu$', fontsize=22)
-    ax2.set_ylabel(r'$T$', fontsize=22)
-    ax2.tick_params(labelsize=18)
+    ax2.set_xlabel(r'$\mu$', fontsize=8,labelpad=0)
+    ax2.set_ylabel(r'$T$', fontsize=8,labelpad=0)
+    ax2.tick_params(labelsize=6)
     ax2.set_box_aspect(1)
-    ax2.set_title("\{8,3\} lattice, Phase diagram", fontsize=26, y=1.02)
+    ax2.set_title("Phase diagram", fontsize=10)
     #ax2.set_title('b)', fontfamily='serif', loc='left', fontsize=26, y=1.15,x=-0.2)
-    cbar=fig.colorbar(pcm, ax=ax2, shrink=0.6, location='top',pad=-0.05)
-    cbar.set_label(label=r'$\Delta$',fontsize=22, rotation=0,x=1.1, labelpad=-30)
-    cbar.ax.tick_params(labelsize=18)    
-    tick_locator = ticker.MaxNLocator(nbins=5)
+    cbar=fig.colorbar(pcm, ax=ax2, shrink=0.9, location='top',pad=0)
+    cbar.set_label(label=r'$\bar\Delta$',fontsize=8, rotation=0,x=1.01,labelpad=-6)
+    cbar.ax.tick_params(labelsize=6)    
+    tick_locator = ticker.MaxNLocator(nbins=4)
     cbar.locator = tick_locator
     cbar.update_ticks()
-    ax1.text(-0.1,1.11,'a)', transform=ax1.transAxes, fontsize=28, fontstyle='oblique')
-    ax2.text(-0.12,1.11,'b)', transform=ax2.transAxes, fontsize=28, fontstyle='oblique')
+    ax1.text(-0.1,1.11,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
+    ax2.text(-0.12,1.11,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
 
 
     #plt.show()
@@ -119,65 +119,65 @@ def plot_hyper_lattices():    #Fig.2
     
     
     "Plots"
-    fig, axs = plt.subplots(2, 2, figsize=(12, 12), layout='constrained')
-    fig.get_layout_engine().set(w_pad=0 / 72, h_pad=10 / 72, hspace=0, wspace=0)
+    fig, axs = plt.subplots(2, 2, figsize=(3.4, 4), layout='constrained',dpi=1000)
+    fig.get_layout_engine().set(w_pad=2 / 72, h_pad=10 / 72, hspace=0, wspace=0)
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
     
-    axs[0,0].plot(r_Delta1, label="{\{8,3\} lattice, $\Delta$", linewidth=1.9,color='royalblue')
-    axs[0,0].plot(r_sigma1, label="{\{8,3\} lattice, $\sigma$", linewidth=1.9,color='coral')
-    axs[0,0].plot(r_CDelta1, label="Cayley tree, $\Delta$", linewidth=1.9, color='slategray')
+    axs[0,0].plot(r_Delta1, label="{\{8,3\} lattice, $\Delta$", linewidth=1.1,color='royalblue')
+    axs[0,0].plot(r_sigma1, label="{\{8,3\} lattice, $\sigma$", linewidth=1.1,color='coral')
+    axs[0,0].plot(r_CDelta1, label="Cayley tree, $\Delta$", linewidth=1.1, color='slategray')
 
     axs[0,0].locator_params(nbins=5)
     axs[0,0].xaxis.set_major_locator(MaxNLocator(integer=True))
     #axs[0,0].set_xlabel(r'Distance from the center', fontsize=22)
-    axs[0,0].set_ylabel(r'$\Delta$', fontsize=22)
-    axs[0,0].tick_params(labelsize=18)
+    axs[0,0].set_ylabel(r'$\Delta$', fontsize=8,labelpad=1)
+    axs[0,0].tick_params(labelsize=8)
     axs[0,0].set_box_aspect(1)
-    axs[0,0].set_title("Radial $\Delta$, 8 shells", fontsize=26, y=1.02)
-    axs[0,0].legend(fontsize=22)
+    axs[0,0].set_title("8 shells", fontsize=10)
+    axs[0,0].legend(fontsize=8)
     
-    axs[1,0].plot(r_Delta2, label="{\{8,3\} lattice, $\Delta$", linewidth=1.9,color='royalblue')
-    axs[1,0].plot(r_sigma2, label="{\{8,3\} lattice, $\sigma$", linewidth=1.9,color='coral')
-    axs[1,0].plot(r_CDelta2, label="Cayley tree, $\Delta$", linewidth=1.9, color='slategray')
+    axs[1,0].plot(r_Delta2, label="{\{8,3\} lattice, $\Delta$", linewidth=1.1,color='royalblue')
+    axs[1,0].plot(r_sigma2, label="{\{8,3\} lattice, $\sigma$", linewidth=1.1,color='coral')
+    axs[1,0].plot(r_CDelta2, label="Cayley tree, $\Delta$", linewidth=1.1, color='slategray')
 
     axs[1,0].locator_params(nbins=5)
     axs[1,0].xaxis.set_major_locator(MaxNLocator(integer=True))
-    axs[1,0].set_xlabel(r'Distance from the center', fontsize=22)
-    axs[1,0].set_ylabel(r'$\Delta$', fontsize=22)
-    axs[1,0].tick_params(labelsize=18)
+    axs[1,0].set_xlabel(r'Distance from the center', fontsize=8)
+    axs[1,0].set_ylabel(r'$\Delta$', fontsize=10,labelpad=1)
+    axs[1,0].tick_params(labelsize=8)
     axs[1,0].set_box_aspect(1)
-    axs[1,0].set_title("Radial $\Delta$, 11 shells", fontsize=26, y=1.02)
-    axs[1,0].legend(fontsize=22)
+    axs[1,0].set_title("11 shells", fontsize=10)
+    #axs[1,0].legend(fontsize=8)
 
     
     colormap=plt.cm.plasma
     G1 = nx.from_numpy_array(h_sample1.lattice_H)
-    nx.draw(G1,pos=nx.shell_layout(G1,nlist=h_sample1.lattice_sample.shell_list,rotate=0),ax=axs[0,1],node_color=h_sample1.Delta, node_size=700, node_shape='.',cmap=colormap)
+    nx.draw(G1,pos=nx.shell_layout(G1,nlist=h_sample1.lattice_sample.shell_list,rotate=0),ax=axs[0,1],node_color=h_sample1.Delta, node_size=20, node_shape='.',cmap=colormap)
     sm = plt.cm.ScalarMappable(cmap=colormap, norm=plt.Normalize(vmin=min(h_sample2.Delta), vmax=max(h_sample2.Delta)))
     cbar1=fig.colorbar(sm,ax=axs[0,1],shrink=0.7)
-    cbar1.ax.tick_params(labelsize=18)
+    cbar1.ax.tick_params(labelsize=8)
     tick_locator = ticker.MaxNLocator(nbins=5)
     cbar1.locator = tick_locator
-    cbar1.set_label("$\Delta$", fontsize=22, rotation=0, labelpad=-25,y=1.1)
+    cbar1.set_label("$\Delta$", fontsize=8, rotation=0, y=1.11,labelpad=-15)
     cbar1.update_ticks()
-    axs[0,1].set_title("\{8,3\} lattice, 8 shells", fontsize=26, y=1.02)
+    axs[0,1].set_title("8 shells", fontsize=10)
 
     G2 = nx.from_numpy_array(h_sample2.lattice_H)
-    nx.draw(G2,pos=nx.shell_layout(G2,nlist=h_sample2.lattice_sample.shell_list,rotate=0),ax=axs[1,1],node_color=h_sample2.Delta, node_size=700, node_shape='.',cmap=colormap)
+    nx.draw(G2,pos=nx.shell_layout(G2,nlist=h_sample2.lattice_sample.shell_list,rotate=0),ax=axs[1,1],node_color=h_sample2.Delta, node_size=20, node_shape='.',cmap=colormap)
     sm = plt.cm.ScalarMappable(cmap=colormap, norm=plt.Normalize(vmin=min(h_sample2.Delta), vmax=max(h_sample2.Delta)))
     cbar2=fig.colorbar(sm,ax=axs[1,1],shrink=0.7)
-    cbar2.ax.tick_params(labelsize=18)
+    cbar2.ax.tick_params(labelsize=8)
     tick_locator = ticker.MaxNLocator(nbins=5)
     cbar2.locator = tick_locator
-    cbar2.set_label("$\Delta$", fontsize=22, rotation=0, labelpad=-25,y=1.1)
+    cbar2.set_label("$\Delta$", fontsize=8, rotation=0, y=1.11,labelpad=-15)
     cbar2.update_ticks()
-    axs[1,1].set_title("\{8,3\} lattice, 11 shells", fontsize=26, y=1.02)
+    axs[1,1].set_title("11 shells", fontsize=10)
     
-    axs[0,0].text(-0.1,1.05,'a)', transform=axs[0,0].transAxes, fontsize=28, fontstyle='oblique')
-    axs[0,1].text(-0.05,1.05,'b)', transform=axs[0,1].transAxes, fontsize=28, fontstyle='oblique')
-    axs[1,0].text(-0.1,1.05,'c)', transform=axs[1,0].transAxes, fontsize=28, fontstyle='oblique')
-    axs[1,1].text(-0.05,1.05,'d)', transform=axs[1,1].transAxes, fontsize=28, fontstyle='oblique')
+    axs[0,0].text(-0.1,1.08,'a)', transform=axs[0,0].transAxes, fontsize=10, fontstyle='oblique')
+    axs[0,1].text(-0.02,1.08,'b)', transform=axs[0,1].transAxes, fontsize=10, fontstyle='oblique')
+    axs[1,0].text(-0.1,1.08,'c)', transform=axs[1,0].transAxes, fontsize=10, fontstyle='oblique')
+    axs[1,1].text(-0.02,1.08,'d)', transform=axs[1,1].transAxes, fontsize=10, fontstyle='oblique')
     axs[0,0].set_box_aspect(1)
     axs[1,0].set_box_aspect(1)
     axs[0,1].set_box_aspect(1)
@@ -299,7 +299,7 @@ def plot_various_M():       #Fig.4
     
     
     "Plotting"
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2.5),dpi=1000, sharex=True, sharey=True, layout='constrained')
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2.2),dpi=1000, sharex=True, sharey=True, layout='constrained')
     fig.get_layout_engine().set(w_pad=0 / 72, h_pad=0 / 72, hspace=0, wspace=0)
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
@@ -454,7 +454,7 @@ def compare_effective_trees():       #Fig.7
     
     
     "Plotting"
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2.5),dpi=1000, sharex=True, sharey=True, layout='constrained')
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2.1),dpi=1000, sharex=True, sharey=True, layout='constrained')
     fig.get_layout_engine().set(w_pad=1/ 72, h_pad=0 / 72, hspace=0, wspace=0)
     plt.rc('font', family = 'serif', serif = 'cmr10')
     rc('text', usetex=True)
@@ -499,7 +499,7 @@ def main():
     #plot_DoS_phasediag()                       #Fig.1
     #plot_hyper_lattices()                      #Fig.2
     #plot_slice_phase_diagram()                 #Fig.3
-    #plot_various_M()                           #Fig.4
+    plot_various_M()                           #Fig.4
     #plot_profile_on_effective_Cayley_tree()    #Fig.5
     #plot_comparison_profiles()                 #Fig.6
     compare_effective_trees()                  #Fig.7

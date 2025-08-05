@@ -85,9 +85,9 @@ def plot_phases():       #Fig.2
     V=1
     mu=0
     l1=10
-    l2=40
+    l2=100
     #l_array=np.array([4,5,6,7])
-    T_array_bulk=np.linspace(0.001,0.02,20)
+    T_array_bulk=np.linspace(0.001,0.014,50)
     
     
     V_array=[1]
@@ -109,7 +109,7 @@ def plot_phases():       #Fig.2
                 bulk_Delta_Bethe[i,j]=Deltas[(V,y[i],x[j])]
     print(bulk_Delta_Bethe)
 
-    T_array=np.linspace(0.001,0.2,20)
+    T_array=np.linspace(0.001,0.2,50)
     CDelta_bulk1=[]
     CDelta_edge1=[]
     CDelta_bulk2=[]
@@ -132,15 +132,19 @@ def plot_phases():       #Fig.2
         CDelta_bulk2.append(r_CDelta2[0])
         CDelta_edge2.append(r_CDelta2[-1])
     
-    lb1=40
-    lb2=60
+    lb1=100
+    lb2=200
+    lb3=300
     bCDelta_bulk1=[]
     bCDelta_edge1=[]
     bCDelta_bulk2=[]
     bCDelta_edge2=[]
+    bCDelta_bulk3=[]
+    bCDelta_edge3=[]
       
     br_CDelta1=[]
     br_CDelta2=[]
+    br_CDelta3=[]
     for T in T_array_bulk:
         bCT1=tree.Caylee_tree(q, lb1, V, T, mu, Delta=br_CDelta1)
         bCT1.BdG_cycle()
@@ -155,6 +159,13 @@ def plot_phases():       #Fig.2
 
         bCDelta_bulk2.append(br_CDelta2[0])
         bCDelta_edge2.append(br_CDelta2[-1])
+        
+        bCT3=tree.Caylee_tree(q, lb3, V, T, mu, Delta=br_CDelta3)
+        bCT3.BdG_cycle()
+        br_CDelta3=bCT3.Delta
+
+        bCDelta_bulk3.append(br_CDelta3[0])
+        bCDelta_edge3.append(br_CDelta3[-1])
     
     
     
@@ -183,8 +194,8 @@ def plot_phases():       #Fig.2
     #ax2.set_ylabel(r'$\Delta$',fontsize=26)
     ax2.set_xlabel(r'$T$',fontsize=8,labelpad=1)
 
-    ax2.plot(T_array,CDelta_edge1, label='edge', linewidth=1.1,color='slategray')
-    ax2.plot(T_array,CDelta_bulk1, label="center", linewidth=1.1,color='orchid')
+    ax2.plot(T_array,CDelta_edge2, label='edge', linewidth=1.1,color='slategray')
+    ax2.plot(T_array,CDelta_bulk2, label="center", linewidth=1.1,color='orchid')
     ax2.set_title(str(l2)+" shells", fontsize=10)
     ax2.legend(fontsize=8)
     #ax2.set_box_aspect(1)
@@ -197,10 +208,12 @@ def plot_phases():       #Fig.2
 
     ax3.plot(T_array_bulk,bCDelta_bulk1, label=str(lb1)+'shells', linewidth=1.1,color='lightcoral')
     ax3.plot(T_array_bulk,bCDelta_bulk2, label=str(lb2)+'shells', linewidth=1.1,color='indianred')
-    ax3.plot(T_array_bulk,bulk_Delta_Bethe[:,0], label='Bethe lattice', linewidth=1.1,color='dodgerblue')
+    ax3.plot(T_array_bulk,bCDelta_bulk3, label=str(lb3)+'shells', linewidth=1.1,color='firebrick')
+
+    ax3.plot(T_array_bulk,bulk_Delta_Bethe[:,0], label='Bethe lattice', linewidth=1.1,color='deeppink')
     ax3.set_title("Bulk comparison", fontsize=10)
 
-    ax3.legend(fontsize=8)
+    ax3.legend(fontsize=8,loc='lower right')
     #ax2.set_box_aspect(1)
     
     ax1.text(0,1.03,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
@@ -274,9 +287,93 @@ def example_states_mu0():       #Fig.3
     plt.close()
     
     return
+
+
+def example_states_different_mu():       #Fig.4
+
+    "Calculation"
+    q=2
+    p=8
+    T=0.001
+    V=1
+    l=100
+    mu1=0.5
+    mu2=1.1
+    mu3=2.3
+    mu4=2.76
+ 
+        
+    CT1=tree.Caylee_tree(q, l, V, T, mu1)
+    CT1.BdG_cycle()
+    
+    CT2=tree.Caylee_tree(q, l, V, T, mu2)
+    CT2.BdG_cycle()
+    
+    CT3=tree.Caylee_tree(q, l, V, T, mu3)
+    CT3.BdG_cycle()
+    
+    CT4=tree.Caylee_tree(q, l, V, T, mu4)
+    CT4.BdG_cycle()
+    
+    
+    "Plotting"
+    fig, axs = plt.subplots(2, 2, figsize=(3.4,4),dpi=1000, layout='constrained')
+    fig.get_layout_engine().set(w_pad=3/ 72, h_pad=4 / 72, hspace=0, wspace=0)
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+
+    axs[0,0].locator_params(nbins=5)
+    axs[0,0].xaxis.set_major_locator(MaxNLocator(nbins=5,integer=True))
+    axs[0,0].tick_params(labelsize=8)
+    axs[0,0].set_ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    axs[0,0].set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    axs[0,0].plot(CT1.Delta, linewidth=1.1, label="Cayley tree", color='royalblue')
+    #ax1.legend(fontsize=8)
+    axs[0,0].set_title("a) \enspace\enspace\enspace\enspace$\mu=" +str(mu1)+"$",fontsize=10,loc='left')
+    #ax1.set_box_aspect(1)
+    
+
+
+    axs[0,1].locator_params(nbins=5)
+    axs[0,1].xaxis.set_major_locator(MaxNLocator(nbins=5,integer=True))
+    axs[0,1].tick_params(labelsize=8)
+    axs[0,1].set_ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    axs[0,1].set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    axs[0,1].plot(CT2.Delta, linewidth=1.1, label="Cayley tree", color='royalblue')
+    #ax1.legend(fontsize=8)
+    axs[0,1].set_title("b) \enspace\enspace\enspace\enspace$\mu=" +str(mu2)+"$",fontsize=10,loc='left')
+    #ax1.set_box_aspect(1)
+    
+    axs[1,0].locator_params(nbins=5)
+    axs[1,0].xaxis.set_major_locator(MaxNLocator(nbins=5,integer=True))
+    axs[1,0].tick_params(labelsize=8)
+    axs[1,0].set_ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    axs[1,0].set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    axs[1,0].plot(CT3.Delta, linewidth=1.1, label="Cayley tree", color='royalblue')
+    #ax1.legend(fontsize=8)
+    axs[1,0].set_title("c) \enspace\enspace\enspace\enspace$\mu=" +str(mu3)+"$",fontsize=10,loc='left')
+    
+    
+    axs[1,1].locator_params(nbins=5)
+    axs[1,1].xaxis.set_major_locator(MaxNLocator(nbins=5,integer=True))
+    axs[1,1].tick_params(labelsize=8)
+    axs[1,1].set_ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    axs[1,1].set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    axs[1,1].plot(CT4.Delta, linewidth=1.1, label="Cayley tree", color='royalblue')
+    #ax1.legend(fontsize=8)
+    axs[1,1].set_title("d) \enspace\enspace\enspace\enspace$\mu=" +str(mu4)+"$",fontsize=10,loc='left')
+
+    #plt.show()
+    filename="example_states_varmu.pdf"
+    plt.savefig(filename)
+    plt.close()
+    
+    return
+
 def main():
     #plot_DoS_phasediag()
-    plot_phases()
+    #plot_phases()
     #example_states_mu0()
+    example_states_different_mu()
          
 main()

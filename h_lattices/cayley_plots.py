@@ -370,10 +370,136 @@ def example_states_different_mu():       #Fig.4
     
     return
 
+def plot_phases_nonzero_mu():       #Fig.2
+
+    "Calculation"
+    q=2
+    p=8
+    T=0.01
+    V=1
+    mu1=1.1
+    mu2=2.76
+    l=100
+    #l_array=np.array([4,5,6,7])
+
+    T1_array=np.linspace(0.0001,0.012,50)
+    T2_array=np.linspace(0.0001,0.006,50)
+    
+    V_array=[1]
+    mu_array=[0]
+    haux.calculate_exactdiagram(haux.bethe_dos3, V_array, mu_array, T1_array)
+    hyper=haux.load_exactdiagram()
+    if len(hyper['V'])==1:
+        V=hyper['V'][0]
+        x=hyper['mu']
+        y=hyper['T']
+        Deltas=hyper['Deltas']
+        # print(x)
+        # print(y)
+        # print(Deltas)
+        bulk_Delta_Bethe1=np.zeros((len(y),len(x)))      
+
+        for i in range(len(y)):
+            for j in range(len(x)):
+                bulk_Delta_Bethe1[i,j]=Deltas[(V,y[i],x[j])]
+    haux.calculate_exactdiagram(haux.bethe_dos3, V_array, mu_array, T1_array)
+    hyper=haux.load_exactdiagram()
+    if len(hyper['V'])==1:
+        V=hyper['V'][0]
+        x=hyper['mu']
+        y=hyper['T']
+        Deltas=hyper['Deltas']
+        # print(x)
+        # print(y)
+        # print(Deltas)
+        bulk_Delta_Bethe2=np.zeros((len(y),len(x)))      
+
+        for i in range(len(y)):
+            for j in range(len(x)):
+                bulk_Delta_Bethe2[i,j]=Deltas[(V,y[i],x[j])]
+    #print(bulk_Delta_Bethe)
+    
+    
+    
+    CDelta_bulk1=[]
+    CDelta_edge1=[]
+    CDelta_bulk2=[]
+    CDelta_edge2=[]
+      
+    r_CDelta1=[]
+    r_CDelta2=[]
+    for T in T1_array:
+        CT1=tree.Caylee_tree(q, l, V, T, mu1, Delta=r_CDelta1)
+        CT1.BdG_cycle()
+        r_CDelta1=CT1.Delta
+
+        CDelta_bulk1.append(r_CDelta1[0])
+        CDelta_edge1.append(np.max(r_CDelta1))
+    
+    for T in T2_array:
+
+        CT2=tree.Caylee_tree(q, l, V, T, mu2, Delta=r_CDelta2)
+        CT2.BdG_cycle()
+        r_CDelta2=CT2.Delta
+
+        CDelta_bulk2.append(r_CDelta2[0])
+        CDelta_edge2.append(np.max(r_CDelta2))
+        
+    
+    "Plotting"
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4,2),dpi=1000, layout='constrained')
+    fig.get_layout_engine().set(w_pad=3 / 72, h_pad=0 / 72, hspace=0, wspace=0)
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+
+    ax1.locator_params(nbins=3)
+    #ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax1.tick_params(labelsize=8)
+    ax1.set_ylabel(r'$\Delta$',fontsize=8,labelpad=0)
+    ax1.set_xlabel(r'$T$',fontsize=8,labelpad=0)
+
+    ax1.plot(T1_array,CDelta_edge1, label=r'$\Delta_\mathrm{max}$', linewidth=1.1,color='slategray')
+    ax1.plot(T1_array,CDelta_bulk1, label="center", linewidth=1.1,color='orchid')
+    ax1.plot(T1_array,bulk_Delta_Bethe1[:,0], label='Bethe lattice', linewidth=1.1,color='deeppink')
+
+    ax1.legend(fontsize=8)
+    ax1.set_title("$\mu="+str(mu1)+"$", fontsize=10)
+
+    #ax1.set_box_aspect(1)
+    
+    ax2.locator_params(nbins=3)
+    #ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax2.tick_params(labelsize=8)
+    #ax2.set_ylabel(r'$\Delta$',fontsize=26)
+    ax2.set_xlabel(r'$T$',fontsize=8,labelpad=1)
+
+    ax2.plot(T2_array,CDelta_edge2, label=r'$\Delta_\mathrm{max}$', linewidth=1.1,color='slategray')
+    ax2.plot(T2_array,CDelta_bulk2, label="center", linewidth=1.1,color='orchid')
+    ax2.plot(T2_array,bulk_Delta_Bethe2[:,0], label='Bethe lattice', linewidth=1.1,color='deeppink')
+
+    ax2.set_title("$\mu="+str(mu2)+"$", fontsize=10)
+    #ax2.legend(fontsize=8)
+    #ax2.set_box_aspect(1)
+
+    
+    ax1.text(0,1.04,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
+    ax2.text(0,1.04,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
+
+
+    #plt.suptitle(r"Edge and center $\Delta$", fontsize=12)
+
+    #plt.show()
+    filename="cayley_tree_center_maxDelta.pdf"
+    plt.savefig(filename)
+    plt.close()
+    
+    return 
+
 def main():
     #plot_DoS_phasediag()
     #plot_phases()
     #example_states_mu0()
-    example_states_different_mu()
-         
+    #example_states_different_mu()
+    plot_phases_nonzero_mu()   
+    
 main()

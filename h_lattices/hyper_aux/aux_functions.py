@@ -67,6 +67,9 @@ def BCS_gap(dos, mu, T, V=1, Delta_seed=1):
 
 def BCS_gap_hyper(mu, T, Emin, Emax, V=1,Delta_seed=1):
     
+    # def dos(s):
+    #     return 1/(4*np.pi)
+    
     def dos(s):
         #print(1/(4*np.pi)*np.tanh(np.pi*np.sqrt(s-0.25)))
         if s>=0.25:

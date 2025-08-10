@@ -36,7 +36,7 @@ def build_radial_matrix_hyperbolic(m, rgrid):
     
     # Helper for repeated factor:
     #    c(r) = 1 / sinh(r),   d(r) = 1 / sinh^2(r).
-    def d(r): return 4.0*np.exp(2*r)
+    def d(r): return np.exp(2*r)
     
     for i in range(npts):
         r_i = rgrid[i]
@@ -118,17 +118,17 @@ def plot_density_of_states(results, Emax=None, nbins=50):
 
 class BCS_hyper:
     
-    def __init__(self,r_max, r_min, m_array, nr, V,T, e_min, e_max,n_m=400):
+    def __init__(self,r_max, r_min, m_array, nr, V,T,mu, e_min, e_max,n_m=400):
         self.r_max=r_max
         self.nr=nr
         self.m_array=m_array
         self.m_max=np.max(m_array)
         self.n_m=n_m
-        self.V=V*np.pi*np.sqrt(2)
+        self.V=V*np.pi
         self.T=T
         self.e_min=e_min
         self.e_max=e_max
-        self.mu=-5
+        self.mu=mu
         self.Delta=[]
         self.rgrid = np.linspace(r_min, r_max, nr) 
         self.e_fermi=0#(self.e_min+self.e_max)/2
@@ -149,20 +149,20 @@ class BCS_hyper:
         
         # Helper for repeated factor:
         #    c(r) = 1 / sinh(r),   d(r) = 1 / sinh^2(r).
-        def d(r): return 4.0*np.exp(2*r)
+        def d(r): return np.exp(2*r)
         
         for i in range(npts):
             r_i = self.rgrid[i]
             
             # Diagonal part (second derivative + m^2/r^2)
-            diag_val = -2.0 / (self.dr * self.dr) - d(r_i)*(m*m)-0.25
+            diag_val = 2.0 / (self.dr * self.dr) + d(r_i)*(m*m)+0.25
             H[i, i] = diag_val
             
             # Off-diagonals (second derivative)
             if i > 0:
-                H[i, i-1] = 1.0 / (self.dr * self.dr)
+                H[i, i-1] = -1.0 / (self.dr * self.dr)
             if i < npts - 1:
-                H[i, i+1] = 1.0 / (self.dr * self.dr)
+                H[i, i+1] = -1.0 / (self.dr * self.dr)
         
         return H
     
@@ -178,15 +178,7 @@ class BCS_hyper:
         right_index = bisect.bisect_right(energies, self.e_max) - 1
         return left_index, right_index
     
-    # def normalize_vectors(self, vectors):
-    #     A = 1/np.sqrt(self.rgrid[1] - self.rgrid[0])
-    #     exp_vector=A*np.exp(-0.5*self.rgrid)
-
-    #     vectors_up=np.einsum(exp_vector,[0],np.copy(vectors[self.N:,:]),[0,1],[0,1])
-    #     vectors_down=np.einsum(exp_vector,[0],np.copy(vectors[:self.N,:]),[0,1],[0,1])
-        
-    #     return vectors_up, vectors_down
-        
+  
     
     def gap_integral(self,Delta):
         
@@ -202,7 +194,6 @@ class BCS_hyper:
             #    print(m, N_spec, np.min(spectra), np.max(spectra))
             if N_spec==0:
                 print("max_m=", m)
-                m_max_new=m
                 break
             F_weight=np.ones(N_spec)-2*self.F(spectra)
             vectors_up=vectors[self.N:,:]
@@ -220,24 +211,20 @@ class BCS_hyper:
         exp_array=1/self.dr*np.exp(self.rgrid)
         gap=exp_array*gap
         
-        if m_max_new<0.5*self.m_max:
-            self.m_max=2*m_max_new
-            self.m_array=np.linspace(0,self.m_max,self.n_m)
-            self.dm=self.m_array[1] - self.m_array[0]
-
         return gap
     
         
     def BdG_cycle(self):
         
         step=0
-        h=0.9
+        h=0.8
         self.Delta=0.1*np.ones(self.N)+0.001*np.random.rand(self.N)             
         while True:
             Delta_next=(1-h)*self.Delta + h*self.gap_integral(self.Delta)
             error=np.max(np.abs((self.Delta-Delta_next)))
             self.Delta=Delta_next
-            #self.plot_Delta()
+            if step%20==0:
+                self.plot_Delta()
             print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
             step += 1
             if error<10**(-6):
@@ -264,18 +251,34 @@ def plot_boundary_state(): #plot
     
     "Calculution"
     r_min = 0  # small radius near zero (to avoid singularity)
-    r_max = 10     # "radius" of the hyperbolic disk
+    r_max = 2     # "radius" of the hyperbolic disk
     nr   = 200    # number of radial steps
-    m_array=np.linspace(0,10,100)
     rgrid = np.linspace(r_min, r_max, nr) 
 
     
-    T=0.5
-    V=1
-    e_min=0
-    e_max=7
-    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, e_min, e_max)
+    T=0.05
+    V=2
+    e_min=0.25
+    e_max=4.25
+    mu=0
+    
+    m_array=np.linspace(0,0.4,800)
+    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
     disc.BdG_cycle()
+    Delta1=disc.Delta
+    np.save("Delta1",Delta1)
+    
+    m_array=np.linspace(0,1,400)
+    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
+    disc.BdG_cycle()
+    Delta2=disc.Delta
+    np.save("Delta2",Delta2)
+    
+    m_array=np.linspace(0,1,600)
+    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
+    disc.BdG_cycle()
+    Delta3=disc.Delta
+    np.save("Delta3",Delta3)
     
     "Plotting"
     plt.rc('font', family = 'serif', serif = 'cmr10')
@@ -287,8 +290,11 @@ def plot_boundary_state(): #plot
     plt.yticks(fontsize=8)
     plt.ylabel(r'$\Delta$',fontsize=8,labelpad=1)
     plt.xlabel(r'x',fontsize=8,labelpad=1)
-    plt.title(r"Boundary state", fontsize=12,y=1.02)
-    plt.plot(rgrid,disc.Delta, linewidth=1.1,color='royalblue')
+    plt.title(r"Superconducting state", fontsize=12,y=1.02)
+    plt.legend(fontsize=8)
+    plt.plot(rgrid,disc.Delta1, linewidth=1.1,color='royalblue',label="$d\kappa_m=0.01$")
+    plt.plot(rgrid,disc.Delta2, linewidth=1.1,color='royalblue',label="$d\kappa_m=0.005$")
+    plt.plot(rgrid,disc.Delta3, linewidth=1.1,color='royalblue',label="$d\kappa_m=0.0025$")
     
     
     plt.show()
@@ -298,51 +304,58 @@ def plot_boundary_state(): #plot
     
     return
 
+def plot_eigenstates():
+    
+    def apx_solution(x,x_0,n):
+        if x>x_0: 
+            return 0
+        else:
+            return -np.exp(x-x_0)*np.sqrt(2)/np.sqrt(x_0)*np.sin(np.pi*n*x/x_0)
+        
+        
+    r_min = 0  # small radius near zero (to avoid singularity)
+    r_max = 4     # "radius" of the hyperbolic disk
+    nr   = 400   # number of radial steps
+    #nm  = 15000     # solve for m = 0..5    
+    m=5
+    rgrid, eigvals, eigvecs = solve_radial_equation_hyperbolic(m, r_min, r_max, nr)
+    print(f"m = {m}, first 5 eigenvalues ~ {eigvals[:5]}")
+    n=10
+    x_0=3
+    print(eigvals[n])
+    apx_state=np.zeros(len(rgrid))
+    for i in range(len(rgrid)):
+        apx_state[i]=apx_solution(rgrid[i],x_0,n)
+    
+    "Plotting"
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+    fig, ax = plt.subplots(figsize=(3.4,2.5),dpi=1000,layout='constrained')
+    ax.locator_params(nbins=7)
+    #ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.xticks(fontsize=8)
+    plt.yticks(fontsize=8)
+    #plt.ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    plt.xlabel(r'x',fontsize=8,labelpad=1)
+    plt.title(r"Eigenstates", fontsize=12,y=1.02)
+    plt.plot(rgrid,np.exp(rgrid)*eigvecs[:, n], linewidth=1.1,color='royalblue', label="$\kappa_m=5$")
+    plt.plot(rgrid,apx_state, linewidth=1.1,color='coral', label="WKB, $x_0=3$")
+    plt.legend(fontsize=8)
+
+    
+    #plt.show()
+    
+    filename="example_WKB_states.pdf"
+    plt.savefig(filename)
+    plt.close()
+    
+   
+    return
+
 def main():
     
-    # r_min = 0  # small radius near zero (to avoid singularity)
-    # r_max = 2     # "radius" of the hyperbolic disk
-    # nr   = 200   # number of radial steps
-    # #nm  = 15000     # solve for m = 0..5    
-    # m_array=np.linspace(0,5,100)
-    # ## Dictionary to hold results
-    
-    # results = {}
-    # for m in m_array:
-    #     rgrid, eigvals, eigvecs = solve_radial_equation_hyperbolic(m, r_min, r_max, nr)
-    #     results[m] = {
-    #         'rgrid': rgrid,
-    #         'eigenvalues': eigvals,
-    #         'eigenvectors': eigvecs
-    #     }
-        
-    #     # Print a few lowest eigenvalues for each m
-    #     print(f"m = {m}, first 5 eigenvalues ~ {eigvals[:5]}")
-    # plot_density_of_states(results, Emax=10, nbins=50)
-    
-    # m_plot = m_array[9]
-    # rgrid = results[m_plot]['rgrid']
-    # eigvals = results[m_plot]['eigenvalues']
-    # eigvecs = results[m_plot]['eigenvectors']
-    
-    # plt.figure(figsize=(7,5))
-    # for i in range(10):
-    #     plt.plot(rgrid, eigvecs[:, i],label=f"Mode {i}, λ={eigvals[i]:.3f}")
-    #     print(m_plot, eigvals[i])
-    # plt.xlabel("r")
-    # plt.ylabel(r"$R_{m}(r)$")
-    # plt.title(f"Radial eigenfunctions for m={m_plot}")
-    # #plt.legend()
-    # plt.show()
-    
-    # # T=0.1
-    # # V=35
-    # # e_min=0
-    # # e_max=5
-    # # disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, e_min, e_max)
-    # # disc.BdG_cycle()
-    # # disc.plot_Delta()
     plot_boundary_state()
+    #plot_eigenstates()
 
 if __name__ == "__main__":
     main()

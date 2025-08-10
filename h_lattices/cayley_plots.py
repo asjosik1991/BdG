@@ -560,9 +560,9 @@ def plot_phase_uniform():       #Fig.3
 
     T_array=np.linspace(0.001, 0.02, num=50)
     V=2
-    mu=0.25
-    Emin=0.25
-    Emax=10
+    mu=10
+    Emin=8
+    Emax=12
 
     Delta_array=[]
     Delta_ini=1
@@ -604,6 +604,6 @@ def main():
     #example_states_different_mu()
     #plot_phases_nonzero_mu()
     #plot_Cayley_phasediag()
-    plot_phase_uniform()
+    #plot_phase_uniform()
     
 main()

@@ -65,6 +65,46 @@ def BCS_gap(dos, mu, T, V=1, Delta_seed=1):
             break
     return Delta
 
+def BCS_gap_hyper(mu, T, Emin, Emax, V=1,Delta_seed=1):
+    
+    def dos(s):
+        #print(1/(4*np.pi)*np.tanh(np.pi*np.sqrt(s-0.25)))
+        if s>=0.25:
+            return 1/(4*np.pi)*np.tanh(np.pi*np.sqrt(s-0.25))
+        else:
+            return 0
+    
+    def gap_kernel(Delta):
+        def func(u):
+            #print("gap kernel test", Delta, V, mu, T, u, dos(u-mu),dos(u)*np.tanh(np.sqrt((u-mu)**2+Delta**2)/(2*T))/(2*np.sqrt((u-mu)**2+Delta**2)))
+            return Delta*V*dos(u)*np.tanh(np.sqrt((u-mu)**2+Delta**2)/(2*T))/(2*np.sqrt((u-mu)**2+Delta**2))
+        return func
+          
+    def gap_integral(Delta):
+        kernel=gap_kernel(Delta)
+        return integrate.quad(kernel,Emin,Emax)[0]
+       
+    print("Calculation of BCS gap mu=", mu, "T=", T)
+
+    Delta=Delta_seed
+    step=0
+
+    while True:
+        Delta_1=gap_integral(Delta)
+        Delta_2=gap_integral(Delta_1)
+        if np.abs(Delta_2-Delta_1)<10**(-6):
+            Delta=Delta_2
+            print("step", step, "error", np.abs(Delta_2-Delta_1), "Delta", Delta)
+            break
+        Delta_next= Delta-(Delta_1-Delta)**2/(Delta_2-2*Delta_1+Delta)
+        error=np.abs(Delta-Delta_next)
+        Delta=Delta_next
+        print("step", step, "error", error, "Delta", Delta)
+        step += 1
+        if error<10**(-6) or Delta<10**(-6):
+            break
+    return Delta
+
 def Delta_muslice(T_array):
     mu=0
     V=1

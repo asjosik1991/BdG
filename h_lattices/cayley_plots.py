@@ -493,13 +493,117 @@ def plot_phases_nonzero_mu():       #Fig.2
     plt.savefig(filename)
     plt.close()
     
-    return 
+    return
+
+def plot_Cayley_phasediag():     #Fig.1
+   
+    mu_array=np.linspace(-4, 4, num=150)
+    T_array=np.linspace(0.001, 0.05, num=200)
+    V=1
+    q=2
+    l=40
+    x=mu_array
+    y=T_array
+    CDelta_bulk=np.zeros((len(T_array),len(mu_array)))
+    CDelta_edge=np.zeros((len(T_array),len(mu_array)))
+    for i in range(len(mu_array)):
+       r_CDelta=[]
+       for j in range(len(T_array)):
+        CT=tree.Caylee_tree(q, l, V, T_array[j], mu_array[i], Delta=r_CDelta)
+        CT.BdG_cycle()
+        r_CDelta=CT.Delta
+    
+        CDelta_bulk[j,i]=r_CDelta[0]
+        CDelta_edge[j,i]=np.max(r_CDelta)
+            
+    "Plots"
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4, 2), dpi=1000, sharex=True, layout='constrained')
+    fig.get_layout_engine().set(w_pad=0 / 72, h_pad=0 / 72, hspace=0, wspace=0)
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+    # plt.xticks(fontsize=24)
+    # plt.yticks(fontsize=24)
+    
+    pcm=ax1.imshow(CDelta_bulk, vmin=CDelta_bulk.min(), vmax=CDelta_edge.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
+    ax1.locator_params(nbins=5)
+    ax1.set_xlabel(r'$\mu$', fontsize=8,labelpad=0)
+    ax1.set_ylabel(r'$T$', fontsize=8,labelpad=0)
+    ax1.tick_params(labelsize=6)
+    ax1.set_box_aspect(1)
+    ax1.set_title("Center $\Delta$", fontsize=10)
+    
+    pcm=ax2.imshow(CDelta_edge, vmin=CDelta_edge.min(), vmax=CDelta_edge.max(), origin='lower', extent=[x.min(), x.max(), y.min(), y.max()], aspect = np.abs((x.max() - x.min())/(y.max() - y.min())))
+    ax2.locator_params(nbins=5)
+    ax2.set_xlabel(r'$\mu$', fontsize=8,labelpad=0)
+    ax2.set_ylabel(r'$T$', fontsize=8,labelpad=0)
+    ax2.tick_params(labelsize=6)
+    ax2.set_box_aspect(1)
+    ax2.set_title("Maximum $\Delta$", fontsize=10)
+    #ax2.set_title('b)', fontfamily='serif', loc='left', fontsize=26, y=1.15,x=-0.2)
+    cbar=fig.colorbar(pcm, ax=[ax1,ax2], shrink=0.6, location='top',pad=0.1)
+    cbar.set_label(label=r'$\Delta$',fontsize=8, rotation=0,x=1.05,labelpad=-6)
+    cbar.ax.tick_params(labelsize=6)    
+    tick_locator = ticker.MaxNLocator(nbins=4)
+    cbar.locator = tick_locator
+    cbar.update_ticks()
+    ax1.text(-0.05,1.08,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
+    ax2.text(-0.05,1.08,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
+ 
+    #plt.show()
+    filename="cayley_tree_phase_diags.pdf"
+    plt.savefig(filename)
+    plt.close()
+    
+def plot_phase_uniform():       #Fig.3
+
+    "Calculation"
+
+    T_array=np.linspace(0.001, 0.02, num=50)
+    V=2
+    mu=0.25
+    Emin=0.25
+    Emax=10
+
+    Delta_array=[]
+    Delta_ini=1
+    for T in T_array:
+        Delta=haux.BCS_gap_hyper(mu, T, Emin, Emax, Delta_seed=Delta_ini, V=V)
+        Delta_array.append(Delta)
+        Delta_ini=Delta
+    
+    
+    "Plotting"
+    fig, (ax1) = plt.subplots(1, 1, figsize=(3.4,2),dpi=1000, layout='constrained')
+    fig.get_layout_engine().set(w_pad=2/ 72, h_pad=0 / 72, hspace=0, wspace=0)
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+
+    ax1.locator_params(nbins=5)
+    ax1.xaxis.set_major_locator(MaxNLocator(nbins=5,integer=True))
+    ax1.tick_params(labelsize=8)
+    ax1.set_ylabel(r'$\Delta$',fontsize=8,labelpad=1)
+    ax1.set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
+    ax1.plot(T_array, Delta_array, linewidth=1.1, label="Cayley tree", color='royalblue')
+    #ax1.legend(fontsize=8)
+    #ax1.set_title("a) \enspace\enspace\enspace\enspace" +str(l1)+" shells",fontsize=10,loc='left')
+    #ax1.set_box_aspect(1)
+    
+
+
+    plt.show()
+    # filename="example_states_mu0.pdf"
+    # plt.savefig(filename)
+    # plt.close()
+    
+    return
 
 def main():
     #plot_DoS_phasediag()
     #plot_phases()
     #example_states_mu0()
     #example_states_different_mu()
-    plot_phases_nonzero_mu()   
+    #plot_phases_nonzero_mu()
+    #plot_Cayley_phasediag()
+    plot_phase_uniform()
     
 main()

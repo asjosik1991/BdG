@@ -6,6 +6,7 @@ from matplotlib import ticker
 from matplotlib.ticker import MaxNLocator
 import bisect
 import matplotlib.cm as cmap
+import os
 
 def build_radial_matrix_hyperbolic(m, rgrid):
     """
@@ -217,7 +218,7 @@ class BCS_hyper:
     def BdG_cycle(self):
         
         step=0
-        h=0.8
+        h=0.4
         self.Delta=0.1*np.ones(self.N)+0.001*np.random.rand(self.N)             
         while True:
             Delta_next=(1-h)*self.Delta + h*self.gap_integral(self.Delta)
@@ -252,33 +253,46 @@ def plot_boundary_state(): #plot
     "Calculution"
     r_min = 0  # small radius near zero (to avoid singularity)
     r_max = 2     # "radius" of the hyperbolic disk
-    nr   = 200    # number of radial steps
+    nr   = 250    # number of radial steps
     rgrid = np.linspace(r_min, r_max, nr) 
 
     
-    T=0.05
+    T=0.1
     V=2
-    e_min=0.25
-    e_max=4.25
-    mu=0
+    e_min=0
+    e_max=4
+    mu=0.25
     
-    m_array=np.linspace(0,0.4,800)
-    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
-    disc.BdG_cycle()
-    Delta1=disc.Delta
-    np.save("Delta1",Delta1)
+    if os.path.isfile("Delta1.npy"):
+        Delta1=np.load("Delta1.npy")
+        print("test completed")
+    else:
+        print("no file found")
+        m_array=np.linspace(0,0.4,4000)
+        disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
+        disc.BdG_cycle()
+        Delta1=disc.Delta
+        np.save("Delta1",Delta1)
     
-    m_array=np.linspace(0,1,400)
-    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
-    disc.BdG_cycle()
-    Delta2=disc.Delta
-    np.save("Delta2",Delta2)
+    # if os.path.isfile("Delta2.npy"):
+    #     Delta2=np.load("Delta2.npy")
+    #     print("test completed")
+    # else:
+    #     m_array=np.linspace(0,0.4,1600)
+    #     disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
+    #     disc.BdG_cycle()
+    #     Delta2=disc.Delta
+    #     np.save("Delta2",Delta2)
     
-    m_array=np.linspace(0,1,600)
-    disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
-    disc.BdG_cycle()
-    Delta3=disc.Delta
-    np.save("Delta3",Delta3)
+    # if os.path.isfile("Delta3.npy"):
+    #     Delta3=np.load("Delta3.npy")
+    #     print("test completed")
+    # else:
+    #     m_array=np.linspace(0,0.4,4000)
+    #     disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
+    #     disc.BdG_cycle()
+    #     Delta3=disc.Delta
+    #     np.save("Delta3",Delta3)
     
     "Plotting"
     plt.rc('font', family = 'serif', serif = 'cmr10')
@@ -291,16 +305,17 @@ def plot_boundary_state(): #plot
     plt.ylabel(r'$\Delta$',fontsize=8,labelpad=1)
     plt.xlabel(r'x',fontsize=8,labelpad=1)
     plt.title(r"Superconducting state", fontsize=12,y=1.02)
-    plt.legend(fontsize=8)
-    plt.plot(rgrid,disc.Delta1, linewidth=1.1,color='royalblue',label="$d\kappa_m=0.01$")
-    plt.plot(rgrid,disc.Delta2, linewidth=1.1,color='royalblue',label="$d\kappa_m=0.005$")
-    plt.plot(rgrid,disc.Delta3, linewidth=1.1,color='royalblue',label="$d\kappa_m=0.0025$")
+    
+    #plt.plot(rgrid,Delta1, linewidth=1.1,color='slateblue',label="$d\kappa_m=5\cdot 10^{-4}$")
+    plt.plot(rgrid,Delta1, linewidth=1.1,color='royalblue',label="$d\kappa_m=2.5\cdot 10^{-4}$")
+    #plt.legend(fontsize=8)
+    #plt.plot(rgrid,disc.Delta3, linewidth=1.1,color='navy',label="$d\kappa_m=10^{-5}$")
     
     
-    plt.show()
-    # filename="hyperbolic_boundary_state.pdf"
-    # plt.savefig(filename)
-    # plt.close()
+    #plt.show()
+    filename="hyperbolic_boundary_state.pdf"
+    plt.savefig(filename)
+    plt.close()
     
     return
 

@@ -191,11 +191,11 @@ class BCS_hyper:
             BdG_H=self.effective_BdG(m,Delta)
             spectra, vectors = eigh(BdG_H,subset_by_value=[self.e_min, self.e_max])
             N_spec=len(spectra)
-            #if N_spec>0:
-            #    print(m, N_spec, np.min(spectra), np.max(spectra))
+            # if N_spec>0:
+            #     print(m, N_spec, np.min(spectra), np.max(spectra))
             if N_spec==0:
-                print("max_m=", m)
-                break
+                #print("no energies in given range", m)
+                continue
             F_weight=np.ones(N_spec)-2*self.F(spectra)
             vectors_up=vectors[self.N:,:]
             vectors_down=vectors[:self.N,:]
@@ -218,13 +218,13 @@ class BCS_hyper:
     def BdG_cycle(self):
         
         step=0
-        h=0.4
+        h=0.8
         self.Delta=0.1*np.ones(self.N)+0.001*np.random.rand(self.N)             
         while True:
             Delta_next=(1-h)*self.Delta + h*self.gap_integral(self.Delta)
             error=np.max(np.abs((self.Delta-Delta_next)))
             self.Delta=Delta_next
-            if step%20==0:
+            if step%10==0:
                 self.plot_Delta()
             print("step", step, "error", error, "Delta_max", np.max(np.abs(self.Delta)))
             step += 1
@@ -252,23 +252,23 @@ def plot_boundary_state(): #plot
     
     "Calculution"
     r_min = 0  # small radius near zero (to avoid singularity)
-    r_max = 2     # "radius" of the hyperbolic disk
-    nr   = 250    # number of radial steps
+    r_max = 4     # "radius" of the hyperbolic disk
+    nr   = 400    # number of radial steps
     rgrid = np.linspace(r_min, r_max, nr) 
 
     
     T=0.1
-    V=2
-    e_min=0
-    e_max=4
-    mu=0.25
+    V=0.5
+    e_min=-0.2
+    e_max=0.2
+    mu=2.3
     
     if os.path.isfile("Delta1.npy"):
         Delta1=np.load("Delta1.npy")
         print("test completed")
     else:
         print("no file found")
-        m_array=np.linspace(0,0.4,4000)
+        m_array=np.linspace(0.17,0.23,600)
         disc=BCS_hyper(r_max, r_min, m_array, nr, V,T, mu, e_min, e_max)
         disc.BdG_cycle()
         Delta1=disc.Delta
@@ -312,10 +312,10 @@ def plot_boundary_state(): #plot
     #plt.plot(rgrid,disc.Delta3, linewidth=1.1,color='navy',label="$d\kappa_m=10^{-5}$")
     
     
-    #plt.show()
-    filename="hyperbolic_boundary_state.pdf"
-    plt.savefig(filename)
-    plt.close()
+    plt.show()
+    # filename="hyperbolic_boundary_state.pdf"
+    # plt.savefig(filename)
+    # plt.close()
     
     return
 
@@ -332,10 +332,10 @@ def plot_eigenstates():
     r_max = 4     # "radius" of the hyperbolic disk
     nr   = 400   # number of radial steps
     #nm  = 15000     # solve for m = 0..5    
-    m=5
+    m=15
     rgrid, eigvals, eigvecs = solve_radial_equation_hyperbolic(m, r_min, r_max, nr)
     print(f"m = {m}, first 5 eigenvalues ~ {eigvals[:5]}")
-    n=10
+    n=1
     x_0=3
     print(eigvals[n])
     apx_state=np.zeros(len(rgrid))
@@ -354,15 +354,15 @@ def plot_eigenstates():
     plt.xlabel(r'x',fontsize=8,labelpad=1)
     plt.title(r"Eigenstates", fontsize=12,y=1.02)
     plt.plot(rgrid,np.exp(rgrid)*eigvecs[:, n], linewidth=1.1,color='royalblue', label="$\kappa_m=5$")
-    plt.plot(rgrid,apx_state, linewidth=1.1,color='coral', label="WKB, $x_0=3$")
+    #plt.plot(rgrid,apx_state, linewidth=1.1,color='coral', label="WKB, $x_0=3$")
     plt.legend(fontsize=8)
 
     
-    #plt.show()
+    plt.show()
     
-    filename="example_WKB_states.pdf"
-    plt.savefig(filename)
-    plt.close()
+    # filename="example_WKB_states.pdf"
+    # plt.savefig(filename)
+    # plt.close()
     
    
     return

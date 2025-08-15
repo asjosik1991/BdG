@@ -2,6 +2,7 @@ import numpy as np
 import hyper_aux.aux_functions as haux
 import Hyperbolic_BdG as hbdg
 import effective_models.Cayley_tree as tree
+import matplotlib.patches as mpatches
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -11,13 +12,112 @@ from matplotlib.ticker import MaxNLocator
 
 from hypertiling import HyperbolicGraph, GraphKernels, HyperbolicTiling
 from hypertiling.graphics.plot import plot_tiling
-from hypertiling.kernel.GRG_util import plot_graph
+#from hypertiling.kernel.GRG_util import plot_graph
 import networkx as nx
-
+from matplotlib.gridspec import GridSpec
+import matplotlib as mpl
 
 import matplotlib.cm as cmap
 palette = ["#81b29a", "#f2cc8f", "#e07a5f"]
 
+def plot_graph(adjacent_matrix, center_coords, p, ax_plot, colors=[]):
+    """
+    Plot a network of the connections
+
+    Parameters
+    ----------
+    adjacent_matrix : List[List[int]]
+        Matrix storing the neighboring relations
+    center_coords : np.array[n]
+        Positions of the node coords as complex
+    p : int, optional
+        Number of edges of a single polygon in the tiling, default is rotational symmetry
+
+    Returns
+    -------
+    void
+    """
+    graph = nx.Graph()
+    for y in range(len(adjacent_matrix)):
+        if y >= center_coords.shape[0]:
+            sector = (y - 1) // (center_coords.shape[0] - 1)
+            index = (y - 1) % (center_coords.shape[0] - 1)
+            index += 1
+            rot = center_coords[index] * np.exp(1j * sector * np.pi * 2 / p)
+            x_ = np.real(rot)
+            y_ = np.imag(rot)
+        else:
+            x_ = np.real(center_coords[y])
+            y_ = np.imag(center_coords[y])
+
+        #if colors:
+        graph.add_node(y, pos=(x_, y_), node_color='xkcd:cobalt')
+        #else:
+        #    graph.add_node(y, pos=(x_, y_))
+
+    for y, row in enumerate(adjacent_matrix):
+        for index in row:
+            if index >= len(adjacent_matrix):
+                print(f"Skip: {y} -> {index}")
+                continue
+            graph.add_edge(y, index)
+
+    nx.draw_networkx(graph, pos=nx.get_node_attributes(graph, 'pos'),
+                     node_color=list(nx.get_node_attributes(graph, 'node_color').values()),ax=ax_plot,node_size=15, node_shape='.',with_labels=False)
+    return
+
+
+def generate_color_palette(colormap_name, num_samples):
+    cmap = plt.get_cmap(colormap_name)  # Get the colormap
+    colors = [cmap(i) for i in np.linspace(0, 1, num_samples)]  # Generate color samples
+    hex_colors = [mpl.colors.to_hex(color) for color in colors]  # Convert to hex
+    return hex_colors
+
+disc2stripe = np.vectorize(lambda z: 2 / np.pi * np.log((1 + z) / (1 - z)))
+stripe2ring = np.vectorize(lambda z, k, delta: np.exp(2 * np.pi * 1j * (z + 1j) / (k * delta)))
+
+def plot_conformal_tiling(ax, tiling, k, nlayers, delta=1.845, squash=True, wrap=True):
+    """
+    Draws the tiling on the given axis (ax) with parameter k.
+    Default parameters correspond to (3,7) tiling
+    """
+
+    fund_region = [-delta/2, delta/2]
+
+    if wrap and not squash:
+        squash = False
+
+    for i in range(k):
+        for idx, pgon in enumerate(tiling):
+
+            if squash:
+                pgonn = disc2stripe(pgon)
+
+                # Exclude polygons outside the fundamental region
+                if np.real(pgonn[0]) < fund_region[0] or np.real(pgonn[0]) > fund_region[1]:
+                    continue
+
+                # Replicate along the stripe
+                pgonn += i * delta
+
+            else:
+                pgonn = pgon
+
+            # Color by reflection level
+            poly_layer = tiling.get_reflection_level(idx)
+            #poly_layer=tiling.get_layer(idx)
+            facecolor = generate_color_palette('Blues', nlayers + 5)[poly_layer]
+            #facecolor = 'white'
+
+
+            # Apply second conformal transformation
+            if wrap:
+                pgonn = stripe2ring(pgonn, k, delta)
+
+            # Draw polygon
+            patch = mpl.patches.Polygon(np.array([(np.real(e), np.imag(e)) for e in pgonn[1:]]),
+                                        facecolor=facecolor, edgecolor="black", linewidth=0.15)
+            ax.add_patch(patch)
 
 def plot_DoS_phasediag():     #Fig.1
     
@@ -405,7 +505,7 @@ def plot_comparison_profiles(): #Fig. 6
     plt.title(r"Radial $\Delta$", fontsize=12,y=1.02)
     
     plt.plot(r_Delta, label='\{8,3\} lattice', linewidth=1.1,color='royalblue')
-    plt.plot(effCT.Delta, linewidth=1.1, label="effective Cayley tree", color='teal')
+    plt.plot(effCT.Delta, linewidth=1.1, label="Cayley tree approximation", color='teal')
     plt.plot(CT.Delta, linewidth=1.1, label="Cayley tree", color='slategray')
     plt.legend(fontsize=8)
     
@@ -466,9 +566,9 @@ def compare_effective_trees():       #Fig.7
     ax1.set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
     ax1.plot(r_Delta1, label=r'$\bar\Delta$', linewidth=1.1,color='royalblue')
     ax1.plot(r_sigma1, label=r"$\sigma$", linewidth=1.1,color='coral')
-    ax1.plot(effCT1.Delta, linewidth=1.1, label="effective Cayley tree", color='teal')
+    ax1.plot(effCT1.Delta, linewidth=1.1, label="Cayley tree approximation", color='teal')
     ax1.plot(CT1.Delta, linewidth=1.1, label="Cayley tree", color='slategray')
-    ax1.legend(fontsize=8)
+    #ax1.legend(fontsize=8)
     ax1.set_title(r"a)  \{8,3\} lattice, $\mu=2$",fontsize=10)
     #ax1.set_box_aspect(1)
     
@@ -477,14 +577,13 @@ def compare_effective_trees():       #Fig.7
     ax2.tick_params(labelsize=8)
     #ax2.set_ylabel(r'$\Delta$',fontsize=26)
     ax2.set_xlabel(r'Distance from the center',fontsize=8,labelpad=1)
-    ax2.plot(r_Delta2, label='\{7,3\} lattice', linewidth=1.1,color='royalblue')
-    ax2.plot(r_sigma2, label=r"\{7,3\} lattice, $\sigma$", linewidth=1.1,color='coral')
-    ax2.plot(effCT2.Delta, linewidth=1.1, label="effective Cayley tree", color='teal')
-    ax2.plot(CT2.Delta, linewidth=1.1, label="Cayley tree", color='slategray')
-    #ax2.legend(fontsize=8)
+    ax2.plot(r_Delta2, linewidth=1.1,color='royalblue')
+    ax2.plot(r_sigma2, linewidth=1.1,color='coral')
+    ax2.plot(effCT2.Delta, linewidth=1.1, color='teal')
+    ax2.plot(CT2.Delta, linewidth=1.1, color='slategray')
     ax2.set_title(r"b)  \{7,3\} lattice, $\mu=0$",fontsize=10)
     #ax2.set_box_aspect(1)
-    
+    fig.legend(fontsize=8,loc=(0.2,0.5))
     # ax1.text(0,1.03,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
     # ax2.text(0,1.03,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
 
@@ -495,14 +594,147 @@ def compare_effective_trees():       #Fig.7
     
     return 
 
+def hyperbolic_sketch():
+    
+    fig = plt.figure(figsize=(3.4, 1.9),dpi=1000, layout='constrained')
+    fig.get_layout_engine().set(w_pad=0/ 72, h_pad=2/ 72, hspace=0, wspace=0)
+    gs = GridSpec(nrows=2, ncols=2, width_ratios=[2,1], height_ratios=[1, 1], figure=fig)
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+    ax_a = fig.add_subplot(gs[:, 0])  # spans both rows on the left
+    ax_b = fig.add_subplot(gs[0, 1])  # top-right
+    ax_c = fig.add_subplot(gs[1, 1])  # bottom-right
+    
+    # ----- Panel (a): draw the Cayley tree -----
+    # hypersample1=hbdg.centered_HL(4) 
+    # h_sample1=hbdg.HyperBdG(hypersample1,1,1,0)
+    # h_sample1.BdG_cycle()
+    
+    # #ax_a.set_title("Cayley tree")
+    # ax_a.set_axis_off()
+    # colormap=plt.cm.plasma
+    # G1 = nx.from_numpy_array(h_sample1.lattice_H)
+    # nx.draw(G1,pos=nx.shell_layout(G1,nlist=h_sample1.lattice_sample.shell_list,rotate=0),ax=ax_a,node_color=h_sample1.Delta, node_size=20, node_shape='.',cmap=colormap)
+
+    nlayers = 6
+    tiling = HyperbolicTiling(8, 3, nlayers, kernel="GR", mangle=0)
+    plot_conformal_tiling(ax_a, tiling, 1, nlayers, squash=False, wrap=False)
+    ax_a.set_title(r'$\{8,3\}$ lattice',fontsize=10)
+    # panel tag
+   # ax_a.text(0.01, 0.98, "(a)", transform=ax_a.transAxes, ha="left", va="top")
+    
+    # ----- Panels (b) and (c): simple function plots -----
+    x = np.linspace(0, 2, 400)
+    
+    # (b) y = e^x
+    ax_b.plot(x, 1+np.exp(2*x),color='royalblue',linewidth=1.1)
+    ax_b.set_ylim(ymin=-8,ymax=51)
+
+    #ax_b.set_ylabel(r'$\Delta$',fontsize=8)
+    ax_b.set_xticks([])  # Remove x-axis ticks
+    ax_b.set_yticks([])  # Remove y-axis ticks
+    ax_b.set_title(r'$\Delta$',fontsize=8)
+    #ax_b.set_title("y = exp(x)")
+    #ax_b.set_xlabel("x")
+    #ax_b.set_ylabel("y")
+    #ax_b.text(0.01, 0.98, "(b)", transform=ax_b.transAxes, ha="left", va="top")
+    
+    # (c) y = e^{-x}
+    ax_c.plot(x, 1-np.exp(2*x),color='royalblue',linewidth=1.1)
+    ax_c.set_ylim(ymin=-50,ymax=10)
+    ax_c.set_xticks([])  # Remove x-axis ticks
+    ax_c.set_yticks([])  # Remove y-axis ticks
+    #ax_c.set_ylabel(r'$\Delta$',fontsize=8)
+    ax_c.set_xlabel(r'$\rho$',fontsize=8)
+
+
+    #ax_c.set_title("y = exp(-x)")
+    #ax_c.set_xlabel("x")
+    #ax_c.set_ylabel("y")
+    #ax_c.text(0.01, 0.98, "(c)", transform=ax_c.transAxes, ha="left", va="top")
+    
+    ax_b.set_box_aspect(1)
+    ax_c.set_box_aspect(1)
+    
+    ax_a.set_xlim(-1.1, 1.1)
+    ax_a.set_ylim(-1.1, 1.1)
+    ax_a.set_box_aspect(1)
+    ax_a.set_axis_off()
+    #fig.patch.set_facecolor('#F9F9F9')
+    ax_a.text(0.05,1.05,'a)', transform=ax_a.transAxes, fontsize=10, fontstyle='oblique')
+    ax_b.text(-0.2,1.11,'b)', transform=ax_b.transAxes, fontsize=10, fontstyle='oblique')
+    
+    arrow = mpatches.FancyArrowPatch((0, 0), (0.6, 0),
+                                 mutation_scale=11, facecolor='xkcd:sea blue',edgecolor='xkcd:grey blue',lw=0.5)
+    ax_a.add_patch(arrow)
+    
+    ax_a.text(0.15,0.07,r'$\rho$', fontsize=10, fontstyle='oblique')
+    
+    #plt.show()
+    filename="hyperbolic_sketch.pdf"
+    plt.savefig(filename)
+    plt.close()
+
+    return
+
+def hyper_tree_comparison():
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.4, 2.1), dpi=1000, sharex=True, layout='constrained')
+    fig.get_layout_engine().set(w_pad=0 / 72, h_pad=0 / 72, hspace=0, wspace=0)
+    plt.rc('font', family = 'serif', serif = 'cmr10')
+    rc('text', usetex=True)
+    
+    G1 = HyperbolicGraph(3, 8, 7, kernel = GraphKernels.GenerativeReflectionGraph)
+    nbrs = G1.get_nbrs_list()  # get neighbors
+    crds = G1.center_coords    # get coordinates of cell centers
+    p = G1.p                   # lattice parameter p
+    
+    # color nodes by layer
+    #colors = [palette[G1.get_reflection_level(i) % len(generate_color_palette('Blues', 5))] for i in range(G1.length)]
+    #colors=generate_color_palette('Blues', 12)
+    plot_graph(nbrs, crds, p, ax1)
+
+    
+    G2 = HyperbolicGraph(3, 15, 7, kernel = GraphKernels.GenerativeReflectionGraph)
+    nbrs = G2.get_nbrs_list()  # get neighbors
+    crds = G2.center_coords    # get coordinates of cell centers
+    p = G2.p                   # lattice parameter p
+    
+    # color nodes by layer
+    #colors = [palette[G2.get_reflection_level(i) % len(generate_color_palette('Blues', 5))] for i in range(G2.length)]
+    
+    plot_graph(nbrs, crds, p, ax2)
+    
+    ax1.set_title(r'$\{8,3\}$ lattice',fontsize=10)
+    ax2.set_title(r'Cayley tree',fontsize=10)
+    ax1.text(0.1,1.05,'a)', transform=ax1.transAxes, fontsize=10, fontstyle='oblique')
+    ax2.text(0.1,1.05,'b)', transform=ax2.transAxes, fontsize=10, fontstyle='oblique')
+
+    ax1.set_box_aspect(1)
+    ax1.set_axis_off()
+    
+    
+    ax2.set_box_aspect(1)
+    ax2.set_axis_off()
+    
+    #plt.show()
+    filename="hyperlat_trees_example.pdf"
+    plt.savefig(filename)
+    plt.close()
+
+    return
+
+
+
 def main():
     #plot_DoS_phasediag()                       #Fig.1
     #plot_hyper_lattices()                      #Fig.2
     #plot_slice_phase_diagram()                 #Fig.3
-    plot_various_M()                           #Fig.4
+    #plot_various_M()                           #Fig.4
     #plot_profile_on_effective_Cayley_tree()    #Fig.5
     #plot_comparison_profiles()                 #Fig.6
-    compare_effective_trees()                  #Fig.7
-
+    #compare_effective_trees()                  #Fig.7
+    #hyperbolic_sketch()
+    hyper_tree_comparison()
 
 main()

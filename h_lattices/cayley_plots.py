@@ -554,7 +554,7 @@ def plot_Cayley_phasediag():     #Fig.1
     plt.savefig(filename)
     plt.close()
     
-def plot_phase_uniform():       #Fig.3
+def plot_phase_uniform():
 
     "Calculation"
 
